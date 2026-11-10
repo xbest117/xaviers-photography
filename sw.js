@@ -1,13 +1,13 @@
 /* Service worker: makes the site installable and lets it open offline.
    Keep VERSION matching SITE_VERSION in index.html. Changing it is what
    tells installed copies that an update is available. */
-const VERSION = "1.7.1";
+const VERSION = "1.7.2";
 const SHELL = `xp-shell-${VERSION}`;
 const IMAGES = "xp-images";
 const FONTS = "xp-fonts";
 const MAX_IMAGES = 150;
 const ASSETS = ["./", "./index.html", "./config.js", "./demo.js", "./manifest.webmanifest",
-  "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png", "./icons/favicon-32.png", "./icons/logo.png"];
+  "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png", "./icons/favicon-32.png", "./icons/logo.png", "./apple-touch-icon.png"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(SHELL).then(c => Promise.all(ASSETS.map(a => c.add(a).catch(() => {})))));
