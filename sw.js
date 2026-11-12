@@ -1,7 +1,7 @@
 /* Service worker: makes the site installable and lets it open offline.
    Keep VERSION matching SITE_VERSION in index.html. Changing it is what
    tells installed copies that an update is available. */
-const VERSION = "1.8.1";
+const VERSION = "1.8.2";
 const SHELL = `xp-shell-${VERSION}`;
 const IMAGES = "xp-images";
 const FONTS = "xp-fonts";

@@ -211,6 +211,9 @@ div.ph.empty,.noimg-box{display:grid;place-items:center;background:
 .post-head .story p{margin:0 0 14px}
 .backbtn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px 10px 12px;margin:0 0 20px;border:1px solid var(--line2);border-radius:999px;font-size:14px;font-weight:600;text-decoration:none;color:var(--text)}
 .backbtn:hover{border-color:var(--text)}
+.gal-bar{position:sticky;top:68px;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 0;margin:-12px 0 18px;background:var(--bg);border-bottom:1px solid var(--line)}
+.gal-bar .backbtn{margin:0;background:var(--bg)}
+.gal-bar .count{font-size:14px;color:var(--muted)}
 .backbtn svg{width:16px;height:16px;transform:rotate(180deg)}
 .crumbs{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:14px;color:var(--muted)}
 .crumbs a{text-decoration:none}.crumbs a:hover{color:var(--text)}
@@ -218,8 +221,9 @@ div.ph.empty,.noimg-box{display:grid;place-items:center;background:
 .credit{display:flex;gap:10px;align-items:center;font-size:14px;color:var(--muted);margin:18px 0 0}
 .credit svg{width:16px;height:16px;color:var(--accent-text);flex:none}
 .photos{columns:4 260px;column-gap:12px;margin-top:0}
+@media (max-width:600px){.photos{columns:2;column-gap:8px}.photos button{margin-bottom:8px}}
 .photos button{display:block;width:100%;margin:0 0 12px;padding:0;border:0;background:var(--card);border-radius:8px;overflow:hidden;cursor:zoom-in;break-inside:avoid}
-.photos img{width:100%;height:auto;transition:opacity .4s,transform .4s;opacity:0}
+.photos img{width:100%;height:auto;object-fit:cover;transition:opacity .4s,transform .4s;opacity:0}
 .photos img.ld{opacity:1}
 .photos button:hover img{transform:scale(1.02)}
 .subfolders{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:22px}
@@ -328,7 +332,7 @@ footer{border-top:1px solid var(--line);padding:64px 0 40px}
 (function(){
 "use strict";
 /* Site version: bumped with every design/code update. See the changelog in README.md. */
-const SITE_VERSION = "1.8.1";   /* keep in step with VERSION in sw.js */
+const SITE_VERSION = "1.8.2";   /* keep in step with VERSION in sw.js */
 const CFG = window.SITE_CONFIG || {};
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -421,7 +425,7 @@ async function driveList(folder){
   const out = []; let token = "";
   do {
     const p = new URLSearchParams({ q: `'${folder}' in parents and trashed=false`, key: API(), pageSize: "1000", orderBy: "folder,name",
-      fields: "nextPageToken,files(id,name,mimeType,imageMediaMetadata(width,height))" });
+      fields: "nextPageToken,files(id,name,mimeType,imageMediaMetadata(width,height,rotation))" });
     if (token) p.set("pageToken", token);
     const r = await fetch("https://www.googleapis.com/drive/v3/files?" + p);
     if (!r.ok) throw new Error("Drive " + r.status);
@@ -754,17 +758,23 @@ function notFound(){ return `<div class="wrap"><div class="notice"><h2 class="di
 
 /* ---------- Gallery (API key: built-in viewer; otherwise Drive's own embed) ---------- */
 let LB = { list: [], i: 0 };
+function galleryBar(count){
+  const top = document.querySelector(".post-head .backbtn");
+  if (!top) return "";
+  return `<div class="gal-bar">${top.outerHTML}${count ? `<span class="count">${count}</span>` : ""}</div>`;
+}
 async function mountGallery(el, folders, ctx = { href: "#/albums", label: "Albums" }){
   if (!folders.length){ el.innerHTML = ""; return; }
   if (!API()){
-    el.innerHTML = folders.map(f => `<div class="drive-embed"><iframe title="Photos" loading="lazy" src="https://drive.google.com/embeddedfolderview?id=${f}#grid"></iframe></div>`).join("");
+    el.innerHTML = galleryBar("") + folders.map(f => `<div class="drive-embed"><iframe title="Photos" loading="lazy" src="https://drive.google.com/embeddedfolderview?id=${f}#grid"></iframe></div>`).join("");
     return;
   }
   el.innerHTML = `<div class="spinner"></div>`;
   try {
     const parts = await Promise.all(folders.map(driveList));
     const images = parts.flatMap(p => p.images), subs = parts.flatMap(p => p.folders);
-    let html = "";
+    const cnt = [images.length ? images.length + (images.length === 1 ? " photo" : " photos") : "", subs.length ? subs.length + (subs.length === 1 ? " folder" : " folders") : ""].filter(Boolean).join(" · ");
+    let html = galleryBar(cnt);
     subs.forEach(s => rememberFolder(s.id, s.name, ctx.href, ctx.label));
     if (subs.length) html += `<div class="subfolders">${subs.map(s => `<a href="#/albums/${s.id}">${ICON.folder}<span>${esc(s.name)}</span></a>`).join("")}</div>`;
     html += `<div class="photos" id="photos"></div><div class="loadmore" id="more"></div>`;
@@ -775,8 +785,10 @@ async function mountGallery(el, folders, ctx = { href: "#/albums", label: "Album
     const add = () => {
       const next = images.slice(shown, shown + STEP);
       box.insertAdjacentHTML("beforeend", next.map((f, k) => {
-        const m = f.imageMediaMetadata || {}; const ratio = m.width && m.height ? `style="aspect-ratio:${m.width}/${m.height}"` : "";
-        return `<button data-i="${shown + k}" aria-label="Open photo"><img ${ratio} loading="lazy" src="${fileImg(f.id, 800)}" alt="${esc(f.name)}" onload="this.classList.add('ld')"></button>`; }).join(""));
+        const m = f.imageMediaMetadata || {}, turned = (m.rotation || 0) % 2 === 1;
+        const w = turned ? m.height : m.width, h = turned ? m.width : m.height;
+        const ratio = w && h ? `style="aspect-ratio:${w}/${h}"` : "";
+        return `<button data-i="${shown + k}" aria-label="Open photo"><img ${ratio} loading="lazy" src="${fileImg(f.id, 800)}" alt="${esc(f.name)}" onload="this.style.aspectRatio=this.naturalWidth+'/'+this.naturalHeight;this.classList.add('ld')"></button>`; }).join(""));
       shown += next.length;
       more.innerHTML = shown < images.length ? `<button class="btn">Show more photos (${images.length - shown} left)</button>` : "";
     };
