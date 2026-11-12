@@ -307,7 +307,7 @@ footer{border-top:1px solid var(--line);padding:64px 0 40px}
 <div class="lb" id="lb" role="dialog" aria-modal="true" aria-label="Photo viewer">
   <div class="bar">
     <span class="count" id="lbCount"></span>
-    <a class="btn" id="lbOpen" target="_blank" rel="noopener">Download original</a>
+    <a class="btn primary" id="lbOpen" target="_blank" rel="noopener">Download photo</a>
     <button class="icon-btn" id="lbClose" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
   </div>
   <div class="stage" id="lbStage">
@@ -317,6 +317,7 @@ footer{border-top:1px solid var(--line);padding:64px 0 40px}
   </div>
 </div>
 
+<div class="toast" id="msgToast" role="status" aria-live="polite" style="padding:12px 20px"><span></span></div>
 <div class="toast" id="updToast" role="status"><span>A new version of the site is ready.</span><button class="btn primary" id="updBtn">Update</button></div>
 <div class="sheet" id="iosSheet"><div class="panel"><img src="icons/apple-touch-icon.png" alt="">
   <h3>Add to your Home Screen</h3>
@@ -332,7 +333,7 @@ footer{border-top:1px solid var(--line);padding:64px 0 40px}
 (function(){
 "use strict";
 /* Site version: bumped with every design/code update. See the changelog in README.md. */
-const SITE_VERSION = "1.8.2";   /* keep in step with VERSION in sw.js */
+const SITE_VERSION = "1.9";   /* keep in step with VERSION in sw.js */
 const CFG = window.SITE_CONFIG || {};
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -809,9 +810,69 @@ function showLB(){
   im.alt = f.name; im.src = fileImg(f.id, 800); im.classList.add("loading");
   const big = new Image(); big.onload = () => { if (LB.tok === tok){ im.src = hi; im.classList.remove("loading"); } }; big.src = hi;
   $("#lbCount").textContent = `${LB.i + 1} / ${n}`;
-  $("#lbOpen").href = `https://drive.google.com/uc?export=download&id=${f.id}`;
+  const sb = $("#lbOpen"); sb.href = `https://drive.google.com/uc?export=download&id=${f.id}`;
+  if (!sb.dataset.busy) sb.textContent = SAVE.id === f.id && SAVE.pending ? "Tap to save" : saveLabel();
   [LB.i + 1, LB.i - 1].forEach(j => { const g = LB.list[(j + n) % n]; if (g) new Image().src = fileImg(g.id, 2400); });
 }
+/* ---------- Save / download the full-resolution photo ----------
+   iPhone: opens the share sheet, where "Save Image" puts it in Photos.
+   Android + computers: downloads the file (Android shows it in Gallery / Google Photos).
+   The =s0 version is the full original size, without GPS location data. */
+const SAVE = { id: null, blob: null, pending: false };
+function saveLabel(){ return isIOS ? "Save to Photos" : "Download photo"; }
+function msg(text, ms = 4000){
+  const t = $("#msgToast"); t.querySelector("span").textContent = text; t.classList.add("show");
+  clearTimeout(msg.t); msg.t = setTimeout(() => t.classList.remove("show"), ms);
+}
+async function fetchFull(f, onProg){
+  const r = await fetch(`https://lh3.googleusercontent.com/d/${f.id}=s0`, { mode: "cors" });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  const total = +r.headers.get("content-length") || 0;
+  if (!r.body || !total) return new Blob([await r.arrayBuffer()], { type: "image/jpeg" });
+  const reader = r.body.getReader(), chunks = []; let got = 0;
+  for (;;){ const { done, value } = await reader.read(); if (done) break; chunks.push(value); got += value.length; onProg(Math.min(99, Math.round(got / total * 100))); }
+  return new Blob(chunks, { type: "image/jpeg" });
+}
+function saveName(f){ return "Xaviers-Photography-" + String(f.name || "photo").replace(/\.[^.]+$/, "").replace(/[^\w-]+/g, "-") + ".jpg"; }
+async function deliver(f, blob){
+  const name = saveName(f);
+  if (isIOS && navigator.canShare){
+    const file = new File([blob], name, { type: "image/jpeg" });
+    if (navigator.canShare({ files: [file] })){
+      try { await navigator.share({ files: [file] }); msg("✓ Done! If you tapped “Save Image,” it’s in your Photos app."); }
+      catch (e){ if (e.name === "NotAllowedError") throw e; }   // AbortError = they closed the share sheet
+      return;
+    }
+  }
+  const url = URL.createObjectURL(blob), a = document.createElement("a");
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  msg(/android/i.test(navigator.userAgent) ? "✓ Downloaded! It’s in your Downloads and Gallery / Photos app." : "✓ Downloaded to your Downloads folder.");
+}
+$("#lbOpen").addEventListener("click", async e => {
+  e.preventDefault();
+  const btn = e.currentTarget, f = LB.list[LB.i];
+  if (!f || btn.dataset.busy) return;
+  try {
+    if (SAVE.id === f.id && SAVE.blob){
+      SAVE.pending = false; btn.textContent = saveLabel(); await deliver(f, SAVE.blob); return;
+    }
+    btn.dataset.busy = "1"; btn.textContent = "Preparing…";
+    const blob = await fetchFull(f, p => { btn.textContent = `Preparing… ${p}%`; });
+    SAVE.id = f.id; SAVE.blob = blob; SAVE.pending = false;
+    delete btn.dataset.busy; btn.textContent = saveLabel();
+    try { await deliver(f, blob); }
+    catch (err){
+      // iPhone only lets the share sheet open right after a tap; a big photo can take longer to load.
+      SAVE.pending = true; btn.textContent = "Tap to save";
+      msg("Photo ready! Tap “Tap to save” to finish.", 6000);
+    }
+  } catch (err){
+    delete btn.dataset.busy; btn.textContent = saveLabel();
+    window.open(`https://drive.google.com/uc?export=download&id=${f.id}`, "_blank");
+    msg("Opening the download…");
+  }
+});
 $("#lbClose").onclick = closeLB;
 $("#lbPrev").onclick = () => { LB.i--; showLB(); };
 $("#lbNext").onclick = () => { LB.i++; showLB(); };
