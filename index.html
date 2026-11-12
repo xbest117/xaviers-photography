@@ -324,7 +324,7 @@ footer{border-top:1px solid var(--line);padding:64px 0 40px}
 (function(){
 "use strict";
 /* Site version: bumped with every design/code update. See the changelog in README.md. */
-const SITE_VERSION = "1.7.2";   /* keep in step with VERSION in sw.js */
+const SITE_VERSION = "1.8";   /* keep in step with VERSION in sw.js */
 const CFG = window.SITE_CONFIG || {};
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -687,9 +687,10 @@ function pagePost(slug){
       <div class="eyebrow" style="margin-top:22px">${esc(p.date)}</div>
       <h1 class="display">${esc(p.title)}</h1>
       <div class="story">${paragraphs(p.story)}</div>
-      <div class="actions">${p.folders.map((f, i) => `<a class="btn primary" href="${folderUrl(f)}" target="_blank" rel="noopener">${ICON.drive} ${p.folders.length > 1 ? "Folder " + (i + 1) + ": " : ""}Full-resolution on Google Drive</a>`).join("")}
+      <div class="actions">${API() ? `<a class="btn primary" href="#gallery" onclick="document.getElementById('gallery').scrollIntoView({behavior:'smooth'});return false">${ICON.cam.replace('stroke-width="1.6"','stroke-width="2" width="17" height="17"')} View the photos</a>` : p.folders.map((f, i) => `<a class="btn primary" href="${folderUrl(f)}" target="_blank" rel="noopener">${ICON.drive} ${p.folders.length > 1 ? "Folder " + (i + 1) + ": " : ""}Full-resolution on Google Drive</a>`).join("")}
         ${S.facebook ? `<a class="btn" href="${esc(S.facebook)}" target="_blank" rel="noopener">${ICON.fb} Follow on Facebook</a>` : ""}</div>
       ${S.creditnote ? `<p class="credit">${ICON.heart}${esc(S.creditnote)}</p>` : ""}
+      ${API() ? `<p class="credit">${ICON.arrow.replace("<svg", '<svg width="16" height="16"')}Tap any photo to see it full-screen and download the original.</p>` : ""}
     </div>
   </div><section class="light block-sm"><div class="wrap">
     <div id="gallery"></div>
@@ -709,8 +710,9 @@ function pageAlbum(folder){
   return `<div class="wrap"><div class="post-head"><div class="crumbs"><a href="#/albums">Albums</a><span>/</span><span id="albumCrumb">${esc(a ? a.title : "Folder")}</span></div>
     <h1 class="display" id="albumTitle" style="margin-top:22px">${esc(a ? a.title : "Album")}</h1>
     ${a && a.description ? `<div class="story"><p>${esc(a.description)}</p></div>` : ""}
-    <div class="actions"><a class="btn primary" href="${folderUrl(folder)}" target="_blank" rel="noopener">${ICON.drive} Open in Google Drive</a></div>
-    ${DATA.S.creditnote ? `<p class="credit">${ICON.heart}${esc(DATA.S.creditnote)}</p>` : ""}</div></div>
+    ${API() ? "" : `<div class="actions"><a class="btn primary" href="${folderUrl(folder)}" target="_blank" rel="noopener">${ICON.drive} Open in Google Drive</a></div>`}
+    ${DATA.S.creditnote ? `<p class="credit">${ICON.heart}${esc(DATA.S.creditnote)}</p>` : ""}
+    ${API() ? `<p class="credit">${ICON.arrow.replace("<svg", '<svg width="16" height="16"')}Tap any photo to see it full-screen and download the original.</p>` : ""}</div></div>
     <section class="light block-sm"><div class="wrap"><div id="gallery"></div></div></section>`;
 }
 function pageSchedule(){ return `<div class="wrap" style="padding-top:56px" id="pageSched"></div>`; }
