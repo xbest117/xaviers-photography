@@ -225,6 +225,10 @@ div.ph.empty,.noimg-box{display:grid;place-items:center;background:
 .photos button{display:block;width:100%;margin:0 0 12px;padding:0;border:0;background:var(--card);border-radius:8px;overflow:hidden;cursor:zoom-in;break-inside:avoid}
 .photos img{width:100%;height:auto;object-fit:cover;transition:opacity .4s,transform .4s;opacity:0}
 .photos img.ld{opacity:1}
+.photos button.vid{position:relative}
+.photos img.novid{background:#141416;aspect-ratio:16/9;min-height:120px}
+.photos .play{position:absolute;left:10px;bottom:10px;display:inline-flex;align-items:center;gap:6px;padding:6px 10px 6px 8px;border-radius:999px;background:rgba(11,11,12,.78);color:#fff;font-size:13px;font-weight:600}
+.photos .play svg{width:16px;height:16px}
 .photos button:hover img{transform:scale(1.02)}
 .subfolders{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:22px}
 .subfolders a{display:flex;gap:12px;align-items:center;padding:16px 18px;border-radius:12px;border:1px solid var(--line);background:var(--card);text-decoration:none;font-weight:600}
@@ -250,11 +254,12 @@ div.ph.empty,.noimg-box{display:grid;place-items:center;background:
 .lb .stage{flex:1;position:relative;min-height:0;margin:0 0 16px}
 .lb .stage img{position:absolute;top:0;left:76px;width:calc(100% - 152px);height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none;transition:opacity .25s}
 .lb .stage img.loading{opacity:.6}
+.lb .stage video,.lb .stage iframe{position:absolute;top:0;left:76px;width:calc(100% - 152px);height:100%;background:#000;border:0}
 .lb .nav-btn{position:absolute;z-index:2;color:#f4f4f5;top:50%;transform:translateY(-50%);width:50px;height:50px;border-radius:50%;border:1px solid var(--line2);background:rgba(20,22,27,.7);cursor:pointer;display:grid;place-items:center}
 .lb .nav-btn:hover{border-color:var(--text)}
 .lb .prev{left:12px}.lb .next{right:12px}
 .lb .nav-btn svg{width:22px;height:22px}
-@media (max-width:700px){.lb .stage img{left:0;width:100%}.lb .nav-btn{width:44px;height:44px;background:rgba(11,11,12,.62);border-color:rgba(255,255,255,.35)}.lb .prev{left:8px}.lb .next{right:8px}.lb .bar .btn{padding:9px 14px;font-size:13px}}
+@media (max-width:700px){.lb .stage img,.lb .stage video,.lb .stage iframe{left:0;width:100%}.lb .nav-btn{width:44px;height:44px;background:rgba(11,11,12,.62);border-color:rgba(255,255,255,.35)}.lb .prev{left:8px}.lb .next{right:8px}.lb .bar .btn{padding:9px 14px;font-size:13px}}
 
 /* footer */
 footer{border-top:1px solid var(--line);padding:64px 0 40px}
@@ -313,6 +318,8 @@ footer{border-top:1px solid var(--line);padding:64px 0 40px}
   <div class="stage" id="lbStage">
     <button class="nav-btn prev" id="lbPrev" aria-label="Previous"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5l-7 7 7 7"/></svg></button>
     <img id="lbImg" alt="">
+    <video id="lbVid" controls playsinline preload="metadata" hidden></video>
+    <iframe id="lbFrame" title="Video" allow="autoplay; fullscreen" hidden></iframe>
     <button class="nav-btn next" id="lbNext" aria-label="Next"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg></button>
   </div>
 </div>
@@ -333,7 +340,7 @@ footer{border-top:1px solid var(--line);padding:64px 0 40px}
 (function(){
 "use strict";
 /* Site version: bumped with every design/code update. See the changelog in README.md. */
-const SITE_VERSION = "1.9";   /* keep in step with VERSION in sw.js */
+const SITE_VERSION = "1.10";   /* keep in step with VERSION in sw.js */
 const CFG = window.SITE_CONFIG || {};
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -426,17 +433,20 @@ async function driveList(folder){
   const out = []; let token = "";
   do {
     const p = new URLSearchParams({ q: `'${folder}' in parents and trashed=false`, key: API(), pageSize: "1000", orderBy: "folder,name",
-      fields: "nextPageToken,files(id,name,mimeType,imageMediaMetadata(width,height,rotation))" });
+      fields: "nextPageToken,files(id,name,mimeType,size,imageMediaMetadata(width,height,rotation),videoMediaMetadata(width,height,durationMillis))" });
     if (token) p.set("pageToken", token);
     const r = await fetch("https://www.googleapis.com/drive/v3/files?" + p);
     if (!r.ok) throw new Error("Drive " + r.status);
     const j = await r.json(); out.push(...(j.files || [])); token = j.nextPageToken;
   } while (token);
   return (folderCache[folder] = {
-    images: out.filter(f => /^image\//.test(f.mimeType)),
+    images: out.filter(f => /^(image|video)\//.test(f.mimeType)),   // photos and videos, in name order
     folders: out.filter(f => f.mimeType === "application/vnd.google-apps.folder"),
   });
 }
+const isVid = f => /^video\//.test(f.mimeType || "");
+const mediaUrl = id => `https://www.googleapis.com/drive/v3/files/${id}?alt=media&key=${encodeURIComponent(API())}`;
+function fmtDur(ms){ if (!ms) return ""; const t = Math.round(ms / 1000), h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = String(t % 60).padStart(2, "0"); return h ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`; }
 const coverCache = {};
 async function firstImage(folder){
   if (folder in coverCache) return coverCache[folder];
@@ -774,7 +784,8 @@ async function mountGallery(el, folders, ctx = { href: "#/albums", label: "Album
   try {
     const parts = await Promise.all(folders.map(driveList));
     const images = parts.flatMap(p => p.images), subs = parts.flatMap(p => p.folders);
-    const cnt = [images.length ? images.length + (images.length === 1 ? " photo" : " photos") : "", subs.length ? subs.length + (subs.length === 1 ? " folder" : " folders") : ""].filter(Boolean).join(" · ");
+    const nV = images.filter(isVid).length, nP = images.length - nV;
+    const cnt = [nP ? nP + (nP === 1 ? " photo" : " photos") : "", nV ? nV + (nV === 1 ? " video" : " videos") : "", subs.length ? subs.length + (subs.length === 1 ? " folder" : " folders") : ""].filter(Boolean).join(" · ");
     let html = galleryBar(cnt);
     subs.forEach(s => rememberFolder(s.id, s.name, ctx.href, ctx.label));
     if (subs.length) html += `<div class="subfolders">${subs.map(s => `<a href="#/albums/${s.id}">${ICON.folder}<span>${esc(s.name)}</span></a>`).join("")}</div>`;
@@ -786,12 +797,16 @@ async function mountGallery(el, folders, ctx = { href: "#/albums", label: "Album
     const add = () => {
       const next = images.slice(shown, shown + STEP);
       box.insertAdjacentHTML("beforeend", next.map((f, k) => {
+        if (isVid(f)){
+          const v = f.videoMediaMetadata || {}, vr = v.width && v.height ? `${v.width}/${v.height}` : "16/9";
+          return `<button data-i="${shown + k}" class="vid" aria-label="Play video ${esc(f.name)}"><img style="aspect-ratio:${vr}" loading="lazy" src="${fileImg(f.id, 800)}" alt="" onload="this.style.aspectRatio=this.naturalWidth+'/'+this.naturalHeight;this.classList.add('ld')" onerror="this.removeAttribute('src');this.classList.add('ld','novid')"><span class="play"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>${fmtDur(v.durationMillis)}</span></button>`;
+        }
         const m = f.imageMediaMetadata || {}, turned = (m.rotation || 0) % 2 === 1;
         const w = turned ? m.height : m.width, h = turned ? m.width : m.height;
         const ratio = w && h ? `style="aspect-ratio:${w}/${h}"` : "";
         return `<button data-i="${shown + k}" aria-label="Open photo"><img ${ratio} loading="lazy" src="${fileImg(f.id, 800)}" alt="${esc(f.name)}" onload="this.style.aspectRatio=this.naturalWidth+'/'+this.naturalHeight;this.classList.add('ld')"></button>`; }).join(""));
       shown += next.length;
-      more.innerHTML = shown < images.length ? `<button class="btn">Show more photos (${images.length - shown} left)</button>` : "";
+      more.innerHTML = shown < images.length ? `<button class="btn">Show more (${images.length - shown} left)</button>` : "";
     };
     add();
     more.onclick = add;
@@ -802,44 +817,65 @@ async function mountGallery(el, folders, ctx = { href: "#/albums", label: "Album
   }
 }
 function openLB(i){ LB.i = i; $("#lb").classList.add("open"); document.body.style.overflow = "hidden"; showLB(); }
-function closeLB(){ $("#lb").classList.remove("open"); document.body.style.overflow = ""; }
+function stopVideo(){
+  const v = $("#lbVid"); v.pause(); v.removeAttribute("src"); v.removeAttribute("poster"); v.load(); v.hidden = true;
+  const fr = $("#lbFrame"); fr.removeAttribute("src"); fr.hidden = true;
+}
+function closeLB(){ stopVideo(); $("#lb").classList.remove("open"); document.body.style.overflow = ""; }
 function showLB(){
   const n = LB.list.length; if (!n) return;
   LB.i = (LB.i + n) % n; const f = LB.list[LB.i];
   const im = $("#lbImg"), hi = fileImg(f.id, 2400), tok = LB.tok = (LB.tok || 0) + 1;
-  im.alt = f.name; im.src = fileImg(f.id, 800); im.classList.add("loading");
-  const big = new Image(); big.onload = () => { if (LB.tok === tok){ im.src = hi; im.classList.remove("loading"); } }; big.src = hi;
+  stopVideo();
+  if (isVid(f)){
+    im.hidden = true;
+    const v = $("#lbVid"); v.hidden = false; v.poster = fileImg(f.id, 1600); v.src = mediaUrl(f.id);
+    v.onerror = () => {   // can't stream it here: fall back to Google's own player
+      if (LB.tok !== tok) return;
+      v.hidden = true; const fr = $("#lbFrame"); fr.hidden = false; fr.src = `https://drive.google.com/file/d/${f.id}/preview`;
+    };
+  } else {
+    im.hidden = false; im.alt = f.name; im.src = fileImg(f.id, 800); im.classList.add("loading");
+    const big = new Image(); big.onload = () => { if (LB.tok === tok){ im.src = hi; im.classList.remove("loading"); } }; big.src = hi;
+  }
   $("#lbCount").textContent = `${LB.i + 1} / ${n}`;
   const sb = $("#lbOpen"); sb.href = `https://drive.google.com/uc?export=download&id=${f.id}`;
-  if (!sb.dataset.busy) sb.textContent = SAVE.id === f.id && SAVE.pending ? "Tap to save" : saveLabel();
-  [LB.i + 1, LB.i - 1].forEach(j => { const g = LB.list[(j + n) % n]; if (g) new Image().src = fileImg(g.id, 2400); });
+  if (!sb.dataset.busy) sb.textContent = SAVE.id === f.id && SAVE.pending ? "Tap to save" : saveLabel(f);
+  [LB.i + 1, LB.i - 1].forEach(j => { const g = LB.list[(j + n) % n]; if (g && !isVid(g)) new Image().src = fileImg(g.id, 2400); });
 }
 /* ---------- Save / download the full-resolution photo ----------
    iPhone: opens the share sheet, where "Save Image" puts it in Photos.
    Android + computers: downloads the file (Android shows it in Gallery / Google Photos).
    The =s0 version is the full original size, without GPS location data. */
 const SAVE = { id: null, blob: null, pending: false };
-function saveLabel(){ return isIOS ? "Save to Photos" : "Download photo"; }
+function saveLabel(f){ const v = f && isVid(f); return isIOS ? (v ? "Save Video" : "Save to Photos") : (v ? "Download video" : "Download photo"); }
+// bigger videos download through Google directly (phones have less memory for big files)
+const videoBlobLimit = () => ((isIOS || /android/i.test(navigator.userAgent)) ? 200 : 600) * 1024 * 1024;
 function msg(text, ms = 4000){
   const t = $("#msgToast"); t.querySelector("span").textContent = text; t.classList.add("show");
   clearTimeout(msg.t); msg.t = setTimeout(() => t.classList.remove("show"), ms);
 }
 async function fetchFull(f, onProg){
-  const r = await fetch(`https://lh3.googleusercontent.com/d/${f.id}=s0`, { mode: "cors" });
+  const type = isVid(f) ? (f.mimeType || "video/mp4") : "image/jpeg";
+  const r = await fetch(isVid(f) ? mediaUrl(f.id) : `https://lh3.googleusercontent.com/d/${f.id}=s0`, { mode: "cors" });
   if (!r.ok) throw new Error("HTTP " + r.status);
   const total = +r.headers.get("content-length") || 0;
-  if (!r.body || !total) return new Blob([await r.arrayBuffer()], { type: "image/jpeg" });
+  if (!r.body || !total) return new Blob([await r.arrayBuffer()], { type });
   const reader = r.body.getReader(), chunks = []; let got = 0;
   for (;;){ const { done, value } = await reader.read(); if (done) break; chunks.push(value); got += value.length; onProg(Math.min(99, Math.round(got / total * 100))); }
-  return new Blob(chunks, { type: "image/jpeg" });
+  return new Blob(chunks, { type });
 }
-function saveName(f){ return "Xaviers-Photography-" + String(f.name || "photo").replace(/\.[^.]+$/, "").replace(/[^\w-]+/g, "-") + ".jpg"; }
+function saveName(f){
+  const base = String(f.name || "photo").replace(/\.[^.]+$/, "").replace(/[^\w-]+/g, "-");
+  const ext = isVid(f) ? ((String(f.name).match(/\.(mp4|mov|m4v|webm)$/i) || [, "mp4"])[1].toLowerCase()) : "jpg";
+  return `Xaviers-Photography-${base}.${ext}`;
+}
 async function deliver(f, blob){
   const name = saveName(f);
   if (isIOS && navigator.canShare){
-    const file = new File([blob], name, { type: "image/jpeg" });
+    const file = new File([blob], name, { type: blob.type || "image/jpeg" });
     if (navigator.canShare({ files: [file] })){
-      try { await navigator.share({ files: [file] }); msg("✓ Done! If you tapped “Save Image,” it’s in your Photos app."); }
+      try { await navigator.share({ files: [file] }); msg(`✓ Done! If you tapped “${isVid(f) ? "Save Video" : "Save Image"},” it’s in your Photos app.`); }
       catch (e){ if (e.name === "NotAllowedError") throw e; }   // AbortError = they closed the share sheet
       return;
     }
@@ -855,12 +891,16 @@ $("#lbOpen").addEventListener("click", async e => {
   if (!f || btn.dataset.busy) return;
   try {
     if (SAVE.id === f.id && SAVE.blob){
-      SAVE.pending = false; btn.textContent = saveLabel(); await deliver(f, SAVE.blob); return;
+      SAVE.pending = false; btn.textContent = saveLabel(f); await deliver(f, SAVE.blob); return;
+    }
+    if (isVid(f) && +f.size > videoBlobLimit()){
+      window.open(`https://drive.google.com/uc?export=download&id=${f.id}`, "_blank");
+      msg("This video is large, so it downloads through Google. Opening it now…", 6000); return;
     }
     btn.dataset.busy = "1"; btn.textContent = "Preparing…";
     const blob = await fetchFull(f, p => { btn.textContent = `Preparing… ${p}%`; });
     SAVE.id = f.id; SAVE.blob = blob; SAVE.pending = false;
-    delete btn.dataset.busy; btn.textContent = saveLabel();
+    delete btn.dataset.busy; btn.textContent = saveLabel(f);
     try { await deliver(f, blob); }
     catch (err){
       // iPhone only lets the share sheet open right after a tap; a big photo can take longer to load.
@@ -868,7 +908,7 @@ $("#lbOpen").addEventListener("click", async e => {
       msg("Photo ready! Tap “Tap to save” to finish.", 6000);
     }
   } catch (err){
-    delete btn.dataset.busy; btn.textContent = saveLabel();
+    delete btn.dataset.busy; btn.textContent = saveLabel(f);
     window.open(`https://drive.google.com/uc?export=download&id=${f.id}`, "_blank");
     msg("Opening the download…");
   }
@@ -882,7 +922,7 @@ document.addEventListener("keydown", e => {
   if (e.key === "Escape") closeLB(); if (e.key === "ArrowRight"){ LB.i++; showLB(); } if (e.key === "ArrowLeft"){ LB.i--; showLB(); }
 });
 let tx = null;
-$("#lbStage").addEventListener("touchstart", e => tx = e.touches[0].clientX, { passive: true });
+$("#lbStage").addEventListener("touchstart", e => { tx = e.target.tagName === "VIDEO" ? null : e.touches[0].clientX; }, { passive: true });
 $("#lbStage").addEventListener("touchend", e => { if (tx == null) return; const dx = e.changedTouches[0].clientX - tx; if (Math.abs(dx) > 50){ LB.i += dx < 0 ? 1 : -1; showLB(); } tx = null; });
 
 /* ---------- App (PWA): install button + update notice ---------- */
