@@ -209,7 +209,10 @@ div.ph.empty,.noimg-box{display:grid;place-items:center;background:
 .post-head h1{font-size:clamp(46px,7vw,96px);margin:16px 0 18px}
 .post-head .story{font-size:19px;color:var(--soft);max-width:62ch}
 .post-head .story p{margin:0 0 14px}
-.crumbs{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--muted)}
+.backbtn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px 10px 12px;margin:0 0 20px;border:1px solid var(--line2);border-radius:999px;font-size:14px;font-weight:600;text-decoration:none;color:var(--text)}
+.backbtn:hover{border-color:var(--text)}
+.backbtn svg{width:16px;height:16px;transform:rotate(180deg)}
+.crumbs{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:14px;color:var(--muted)}
 .crumbs a{text-decoration:none}.crumbs a:hover{color:var(--text)}
 .actions{display:flex;gap:10px;flex-wrap:wrap;margin:24px 0 8px}
 .credit{display:flex;gap:10px;align-items:center;font-size:14px;color:var(--muted);margin:18px 0 0}
@@ -236,17 +239,18 @@ div.ph.empty,.noimg-box{display:grid;place-items:center;background:
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* lightbox */
-.lb{position:fixed;inset:0;z-index:100;background:rgba(5,6,8,.96);display:none;flex-direction:column}
+.lb{position:fixed;inset:0;z-index:100;background:#050608;display:none;flex-direction:column}
 .lb.open{display:flex}
 .lb .bar{display:flex;align-items:center;gap:10px;padding:14px 18px;color:var(--muted);font-size:14px}
 .lb .bar .count{margin-right:auto}
-.lb .stage{flex:1;position:relative;display:grid;place-items:center;min-height:0;padding:0 70px 20px}
-.lb .stage img{max-width:100%;max-height:100%;object-fit:contain;border-radius:4px;user-select:none}
-.lb .nav-btn{position:absolute;top:50%;transform:translateY(-50%);width:50px;height:50px;border-radius:50%;border:1px solid var(--line2);background:rgba(20,22,27,.7);cursor:pointer;display:grid;place-items:center}
+.lb .stage{flex:1;position:relative;min-height:0;margin:0 0 16px}
+.lb .stage img{position:absolute;top:0;left:76px;width:calc(100% - 152px);height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none;transition:opacity .25s}
+.lb .stage img.loading{opacity:.6}
+.lb .nav-btn{position:absolute;z-index:2;color:#f4f4f5;top:50%;transform:translateY(-50%);width:50px;height:50px;border-radius:50%;border:1px solid var(--line2);background:rgba(20,22,27,.7);cursor:pointer;display:grid;place-items:center}
 .lb .nav-btn:hover{border-color:var(--text)}
 .lb .prev{left:12px}.lb .next{right:12px}
 .lb .nav-btn svg{width:22px;height:22px}
-@media (max-width:700px){.lb .stage{padding:0 0 20px}.lb .nav-btn{display:none}}
+@media (max-width:700px){.lb .stage img{left:0;width:100%}.lb .nav-btn{width:44px;height:44px;background:rgba(11,11,12,.62);border-color:rgba(255,255,255,.35)}.lb .prev{left:8px}.lb .next{right:8px}.lb .bar .btn{padding:9px 14px;font-size:13px}}
 
 /* footer */
 footer{border-top:1px solid var(--line);padding:64px 0 40px}
@@ -324,7 +328,7 @@ footer{border-top:1px solid var(--line);padding:64px 0 40px}
 (function(){
 "use strict";
 /* Site version: bumped with every design/code update. See the changelog in README.md. */
-const SITE_VERSION = "1.8";   /* keep in step with VERSION in sw.js */
+const SITE_VERSION = "1.8.1";   /* keep in step with VERSION in sw.js */
 const CFG = window.SITE_CONFIG || {};
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -683,7 +687,7 @@ function pagePost(slug){
   const S = DATA.S;
   document.title = p.title + " · " + (S.sitename || "Xavier's Photography");
   return `<div class="wrap">
-    <div class="post-head"><div class="crumbs"><a href="#/photos">Photos</a><span>/</span><span>${esc(p.category || "Gallery")}</span></div>
+    <div class="post-head"><a class="backbtn" href="#/photos">${ICON.arrow}Back to all photos</a><div class="crumbs"><a href="#/photos">Photos</a><span>/</span><span>${esc(p.category || "Gallery")}</span></div>
       <div class="eyebrow" style="margin-top:22px">${esc(p.date)}</div>
       <h1 class="display">${esc(p.title)}</h1>
       <div class="story">${paragraphs(p.story)}</div>
@@ -705,10 +709,39 @@ function pageAlbums(){
     <p>Original, full-resolution photos organized by season and category. Free to download and share.</p></div></div><section class="light block-sm"><div class="wrap">
     ${Object.entries(groups).map(([g, list]) => `<h3 class="album-sec">${esc(g)}</h3><div class="albums">${list.map(albumCard).join("")}</div>`).join("")}</div></section>`;
 }
+/* Folders inside albums/posts: remember each one's name and where "Back" goes. */
+const FOLDER_META = (() => { try { return JSON.parse(sessionStorage.getItem("xp-folders") || "{}"); } catch(e){ return {}; } })();
+function rememberFolder(id, name, backHref, backLabel){
+  FOLDER_META[id] = { name, backHref, backLabel };
+  try { sessionStorage.setItem("xp-folders", JSON.stringify(FOLDER_META)); } catch(e){}
+}
+function folderTrail(folder){
+  const trail = []; let cur = folder;
+  for (let n = 0; n < 8; n++){
+    const m = FOLDER_META[cur]; if (!m) break;
+    trail.unshift({ href: m.backHref, label: m.backLabel });
+    if (!m.backHref.startsWith("#/albums/")) break;
+    cur = m.backHref.slice(9);
+    if (DATA.albums.some(x => x.folders.includes(cur))) break;
+  }
+  const root = trail.length && trail[0].href.startsWith("#/photos/") ? { href: "#/photos", label: "Photos" } : { href: "#/albums", label: "Albums" };
+  return [root, ...trail];
+}
+function folderName(folder){
+  const a = DATA.albums.find(x => x.folders.includes(folder));
+  return a ? a.title : (FOLDER_META[folder] ? FOLDER_META[folder].name : "");
+}
 function pageAlbum(folder){
   const a = DATA.albums.find(x => x.folders.includes(folder));
-  return `<div class="wrap"><div class="post-head"><div class="crumbs"><a href="#/albums">Albums</a><span>/</span><span id="albumCrumb">${esc(a ? a.title : "Folder")}</span></div>
-    <h1 class="display" id="albumTitle" style="margin-top:22px">${esc(a ? a.title : "Album")}</h1>
+  const meta = FOLDER_META[folder];
+  const title = folderName(folder) || "Album";
+  const back = a || !meta ? { href: "#/albums", label: "Albums" } : { href: meta.backHref, label: meta.backLabel };
+  const trail = a ? [{ href: "#/albums", label: "Albums" }] : folderTrail(folder);
+  if (!a && !meta && API()) fetch(`https://www.googleapis.com/drive/v3/files/${folder}?fields=name&key=${encodeURIComponent(API())}`)
+    .then(r => r.json()).then(j => { if (j.name){ const t = $("#albumTitle"), c = $("#albumCrumb"); if (t) t.textContent = j.name; if (c) c.textContent = j.name; } }).catch(() => {});
+  return `<div class="wrap"><div class="post-head"><a class="backbtn" href="${esc(back.href)}">${ICON.arrow}Back to ${esc(back.label)}</a>
+    <div class="crumbs">${trail.map(t => `<a href="${esc(t.href)}">${esc(t.label)}</a><span>/</span>`).join("")}<span id="albumCrumb">${esc(title)}</span></div>
+    <h1 class="display" id="albumTitle" style="margin-top:22px">${esc(title)}</h1>
     ${a && a.description ? `<div class="story"><p>${esc(a.description)}</p></div>` : ""}
     ${API() ? "" : `<div class="actions"><a class="btn primary" href="${folderUrl(folder)}" target="_blank" rel="noopener">${ICON.drive} Open in Google Drive</a></div>`}
     ${DATA.S.creditnote ? `<p class="credit">${ICON.heart}${esc(DATA.S.creditnote)}</p>` : ""}
@@ -721,7 +754,7 @@ function notFound(){ return `<div class="wrap"><div class="notice"><h2 class="di
 
 /* ---------- Gallery (API key: built-in viewer; otherwise Drive's own embed) ---------- */
 let LB = { list: [], i: 0 };
-async function mountGallery(el, folders){
+async function mountGallery(el, folders, ctx = { href: "#/albums", label: "Albums" }){
   if (!folders.length){ el.innerHTML = ""; return; }
   if (!API()){
     el.innerHTML = folders.map(f => `<div class="drive-embed"><iframe title="Photos" loading="lazy" src="https://drive.google.com/embeddedfolderview?id=${f}#grid"></iframe></div>`).join("");
@@ -732,6 +765,7 @@ async function mountGallery(el, folders){
     const parts = await Promise.all(folders.map(driveList));
     const images = parts.flatMap(p => p.images), subs = parts.flatMap(p => p.folders);
     let html = "";
+    subs.forEach(s => rememberFolder(s.id, s.name, ctx.href, ctx.label));
     if (subs.length) html += `<div class="subfolders">${subs.map(s => `<a href="#/albums/${s.id}">${ICON.folder}<span>${esc(s.name)}</span></a>`).join("")}</div>`;
     html += `<div class="photos" id="photos"></div><div class="loadmore" id="more"></div>`;
     el.innerHTML = html;
@@ -759,7 +793,9 @@ function closeLB(){ $("#lb").classList.remove("open"); document.body.style.overf
 function showLB(){
   const n = LB.list.length; if (!n) return;
   LB.i = (LB.i + n) % n; const f = LB.list[LB.i];
-  $("#lbImg").src = fileImg(f.id, 2400); $("#lbImg").alt = f.name;
+  const im = $("#lbImg"), hi = fileImg(f.id, 2400), tok = LB.tok = (LB.tok || 0) + 1;
+  im.alt = f.name; im.src = fileImg(f.id, 800); im.classList.add("loading");
+  const big = new Image(); big.onload = () => { if (LB.tok === tok){ im.src = hi; im.classList.remove("loading"); } }; big.src = hi;
   $("#lbCount").textContent = `${LB.i + 1} / ${n}`;
   $("#lbOpen").href = `https://drive.google.com/uc?export=download&id=${f.id}`;
   [LB.i + 1, LB.i - 1].forEach(j => { const g = LB.list[(j + n) % n]; if (g) new Image().src = fileImg(g.id, 2400); });
@@ -818,14 +854,14 @@ function route(){
   clearInterval(heroTimer);
   if (!a){ app.innerHTML = pageHome(); scheduleBlock($("#homeSched"), true); autoCovers(app);
     fitHeadline(); const feat = DATA.posts.filter(p => p.featured); startHero([...feat, ...DATA.posts.filter(p => !p.featured)].slice(0, 6)); }
-  else if (a === "photos" && b){ app.innerHTML = pagePost(b); const p = DATA.posts.find(x => x.slug === b); if (p) mountGallery($("#gallery"), p.folders); }
+  else if (a === "photos" && b){ app.innerHTML = pagePost(b); const p = DATA.posts.find(x => x.slug === b); if (p) mountGallery($("#gallery"), p.folders, { href: `#/photos/${p.slug}`, label: p.title }); }
   else if (a === "photos"){
     app.innerHTML = pagePhotos(); renderPostList();
     $("#q").oninput = e => { filterState.q = e.target.value; renderPostList(); };
     $("#filters").onclick = e => { const btn = e.target.closest("button"); if (!btn) return; filterState.cat = btn.dataset.c;
       document.querySelectorAll("#filters button").forEach(x => x.classList.toggle("on", x === btn)); renderPostList(); };
   }
-  else if (a === "albums" && b){ app.innerHTML = pageAlbum(b); mountGallery($("#gallery"), [b]); }
+  else if (a === "albums" && b){ app.innerHTML = pageAlbum(b); mountGallery($("#gallery"), [b], { href: `#/albums/${b}`, label: folderName(b) || "Album" }); }
   else if (a === "albums"){ app.innerHTML = pageAlbums(); autoCovers(app); }
   else if (a === "schedule"){ app.innerHTML = pageSchedule(); scheduleBlock($("#pageSched")); }
   else if (a === "about"){ app.innerHTML = pageAbout(); }
