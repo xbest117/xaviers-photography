@@ -255,9 +255,13 @@ div.ph.empty,.noimg-box{display:grid;place-items:center;background:
 .actions{display:flex;gap:10px;flex-wrap:wrap;margin:24px 0 8px}
 .credit{display:flex;gap:10px;align-items:center;font-size:14px;color:var(--muted);margin:18px 0 0}
 .credit svg{width:16px;height:16px;color:var(--accent-text);flex:none}
-.photos{columns:4 260px;column-gap:12px;margin-top:0}
-.photos .tile{position:relative;margin:0 0 12px;break-inside:avoid}
-@media (max-width:600px){.photos{columns:2;column-gap:8px}.photos .tile{margin-bottom:8px}}
+/* Justified rows: photos read left to right, then the next row, in time order. Each photo grows in
+   proportion to its shape (--r = width/height), so every photo in a row ends up the same height. */
+.photos{--h:230px;display:flex;flex-wrap:wrap;gap:12px;margin-top:0}
+.photos::after{content:"";flex-grow:1000000}   /* keeps the last, unfinished row from stretching */
+.photos .tile{--r:1.5;position:relative;flex:var(--r) 1 calc(var(--r) * var(--h));min-width:0}
+@media (max-width:900px){.photos{--h:170px;gap:10px}}
+@media (max-width:600px){.photos{--h:105px;gap:6px}}
 .photos .open{display:block;width:100%;margin:0;padding:0;border:0;background:var(--card);border-radius:8px;overflow:hidden;cursor:zoom-in}
 .photos .fav{position:absolute;top:8px;right:8px;width:38px;height:38px;border-radius:50%;border:0;background:rgba(11,11,12,.55);color:#fff;display:grid;place-items:center;cursor:pointer;opacity:0;transition:opacity .2s,background .2s}
 .photos .tile:hover .fav,.photos .fav.on,.photos .fav:focus-visible{opacity:1}
@@ -270,10 +274,10 @@ div.ph.empty,.noimg-box{display:grid;place-items:center;background:
 .fav-actions{display:flex;gap:10px;flex-wrap:wrap}
 .fav-actions .btn{padding:10px 16px;font-size:14px}
 .share-btn svg{width:17px;height:17px}
-.photos img{width:100%;height:auto;object-fit:cover;transition:opacity .4s,transform .4s;opacity:0}
+.photos img{display:block;width:100%;height:auto;aspect-ratio:var(--r);object-fit:cover;transition:opacity .4s,transform .4s;opacity:0}
 .photos img.ld{opacity:1}
 .photos .open.vid{position:relative}
-.photos img.novid{background:#141416;aspect-ratio:16/9;min-height:120px}
+.photos img.novid{background:#141416}
 .photos .play{position:absolute;left:10px;bottom:10px;display:inline-flex;align-items:center;gap:6px;padding:6px 10px 6px 8px;border-radius:999px;background:rgba(11,11,12,.78);color:#fff;font-size:13px;font-weight:600}
 .photos .play svg{width:16px;height:16px}
 .photos .open:hover img{transform:scale(1.02)}
@@ -394,7 +398,7 @@ footer{border-top:1px solid var(--line);padding:64px 0 40px}
 (function(){
 "use strict";
 /* Site version: bumped with every design/code update. See the changelog in README.md. */
-const SITE_VERSION = "1.13";   /* keep in step with VERSION in sw.js */
+const SITE_VERSION = "1.15";   /* keep in step with VERSION in sw.js */
 const CFG = window.SITE_CONFIG || {};
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -1095,18 +1099,23 @@ async function mountGallery(el, folders, ctx = { href: "#/albums", label: "Album
     el.innerHTML = folders.map(f => `<div class="drive-embed"><iframe title="Photos" loading="lazy" src="https://drive.google.com/embeddedfolderview?id=${f}#grid"></iframe></div>`).join("");
   }
 }
+function shapeOf(ratioText){ const [w, h] = String(ratioText).split("/").map(Number); return w && h ? (w / h).toFixed(4) : 1.7778; }
+/* Once a thumbnail loads, use its real shape (catches photos whose size info was sideways or missing). */
+window.fixShape = el => {
+  if (el.naturalWidth && el.naturalHeight){ const t = el.closest(".tile"); if (t) t.style.setProperty("--r", (el.naturalWidth / el.naturalHeight).toFixed(4)); }
+  el.classList.add("ld");
+};
 const HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7.5-4.6-7.5-10.1A4.3 4.3 0 0 1 12 7.4a4.3 4.3 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20z"/></svg>';
 function tileHTML(f, i, label){
   const on = isFav(f.id);
   const heart = `<button class="fav${on ? " on" : ""}" data-fav="${i}" data-id="${f.id}" aria-pressed="${on}" aria-label="${on ? "Remove from" : "Add to"} favorites">${HEART}</button>`;
   if (isVid(f)){
     const v = f.videoMediaMetadata || {}, vr = v.width && v.height ? `${v.width}/${v.height}` : "16/9";
-    return `<div class="tile"><button class="open vid" data-i="${i}" aria-label="Play video ${esc(f.name)}"><img style="aspect-ratio:${vr}" loading="lazy" src="${fileImg(f.id, 800)}" alt="" onload="this.style.aspectRatio=this.naturalWidth+'/'+this.naturalHeight;this.classList.add('ld')" onerror="this.removeAttribute('src');this.classList.add('ld','novid')"><span class="play"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>${fmtDur(v.durationMillis)}</span></button>${heart}</div>`;
+    return `<div class="tile" style="--r:${shapeOf(vr)}"><button class="open vid" data-i="${i}" aria-label="Play video ${esc(f.name)}"><img loading="lazy" src="${fileImg(f.id, 800)}" alt="" onload="fixShape(this)" onerror="this.removeAttribute('src');this.classList.add('ld','novid')"><span class="play"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>${fmtDur(v.durationMillis)}</span></button>${heart}</div>`;
   }
   const m = f.imageMediaMetadata || {}, turned = (m.rotation || 0) % 2 === 1;
   const w = turned ? m.height : m.width, h = turned ? m.width : m.height;
-  const ratio = w && h ? `style="aspect-ratio:${w}/${h}"` : "";
-  return `<div class="tile"><button class="open" data-i="${i}" aria-label="Open photo"><img ${ratio} loading="lazy" src="${fileImg(f.id, 800)}" alt="${esc(f.name)}" onload="this.style.aspectRatio=this.naturalWidth+'/'+this.naturalHeight;this.classList.add('ld')"></button>${heart}</div>`;
+  return `<div class="tile" style="--r:${w && h ? (w / h).toFixed(4) : 1.5}"><button class="open" data-i="${i}" aria-label="Open photo"><img loading="lazy" src="${fileImg(f.id, 800)}" alt="${esc(f.name)}" onload="fixShape(this)"></button>${heart}</div>`;
 }
 /* ---------- Favorites (saved on the visitor's device) ---------- */
 const FAV_KEY = "xp-favs-v1";
@@ -1234,7 +1243,20 @@ $("#lbOpen").addEventListener("click", async e => {
 $("#lbClose").onclick = closeLB;
 $("#lbPrev").onclick = () => { LB.i--; showLB(); };
 $("#lbNext").onclick = () => { LB.i++; showLB(); };
-$("#lbStage").onclick = e => { if (e.target.id === "lbStage") closeLB(); };
+/* Click (or tap) anywhere that isn't the photo, video or a button to close the viewer. */
+function shownRect(el){   // where the picture actually is inside its letterboxed frame
+  const r = el.getBoundingClientRect(), nw = el.naturalWidth || el.videoWidth, nh = el.naturalHeight || el.videoHeight;
+  if (!nw || !nh) return r;
+  const k = Math.min(r.width / nw, r.height / nh), w = nw * k, h = nh * k;
+  return { left: r.left + (r.width - w) / 2, right: r.left + (r.width + w) / 2, top: r.top + (r.height - h) / 2, bottom: r.top + (r.height + h) / 2 };
+}
+$("#lbStage").onclick = e => {
+  if (e.target.closest(".nav-btn")) return;
+  if (e.target.id === "lbStage") return closeLB();
+  const el = e.target.closest("#lbImg, #lbVid");
+  if (el){ const c = shownRect(el); if (e.clientX < c.left || e.clientX > c.right || e.clientY < c.top || e.clientY > c.bottom) closeLB(); }
+};
+$("#lb").addEventListener("click", e => { if (e.target.id === "lb" || e.target.classList.contains("bar") || e.target.id === "lbCount") closeLB(); });
 document.addEventListener("keydown", e => {
   if (!$("#lb").classList.contains("open")) return;
   if (e.key === "Escape") closeLB(); if (e.key === "ArrowRight"){ LB.i++; showLB(); } if (e.key === "ArrowLeft"){ LB.i--; showLB(); }
