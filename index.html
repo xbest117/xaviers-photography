@@ -140,6 +140,9 @@ header.top::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height
 .hero .eyebrow{color:#fff;display:flex;align-items:center;gap:12px;text-shadow:0 1px 10px rgba(0,0,0,.7)}
 .hero .eyebrow::before{content:"";width:28px;height:3px;background:var(--accent);border-radius:2px}
 .hero .btn:not(.primary){background:rgba(11,11,12,.55);border-color:rgba(255,255,255,.35);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.hero-cap{display:inline-flex;align-items:center;gap:8px;margin-top:22px;font-size:13px;font-weight:500;color:rgba(255,255,255,.82);text-decoration:none;text-shadow:0 1px 10px rgba(0,0,0,.8)}
+.hero-cap svg{width:15px;height:15px;flex:none}
+.hero-cap:hover{color:#fff;text-decoration:underline}
 .hero .ctas{display:flex;gap:12px;flex-wrap:wrap}
 .hero .latest{position:absolute;right:24px;bottom:64px;max-width:300px;text-decoration:none;background:rgba(19,21,26,.72);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--line2);border-radius:var(--r);padding:16px 18px}
 .hero .latest:hover{border-color:var(--accent-text)}
@@ -391,7 +394,7 @@ footer{border-top:1px solid var(--line);padding:64px 0 40px}
 (function(){
 "use strict";
 /* Site version: bumped with every design/code update. See the changelog in README.md. */
-const SITE_VERSION = "1.12";   /* keep in step with VERSION in sw.js */
+const SITE_VERSION = "1.13";   /* keep in step with VERSION in sw.js */
 const CFG = window.SITE_CONFIG || {};
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -485,18 +488,31 @@ async function driveList(folder){
   const out = []; let token = "";
   do {
     const p = new URLSearchParams({ q: `'${folder}' in parents and trashed=false`, key: API(), pageSize: "1000", orderBy: "folder,name",
-      fields: "nextPageToken,files(id,name,mimeType,size,imageMediaMetadata(width,height,rotation),videoMediaMetadata(width,height,durationMillis))" });
+      fields: "nextPageToken,files(id,name,mimeType,size,modifiedTime,imageMediaMetadata(width,height,rotation,time),videoMediaMetadata(width,height,durationMillis))" });
     if (token) p.set("pageToken", token);
     const r = await fetch("https://www.googleapis.com/drive/v3/files?" + p);
     if (!r.ok) throw new Error("Drive " + r.status);
     const j = await r.json(); out.push(...(j.files || [])); token = j.nextPageToken;
   } while (token);
+  const media = out.filter(f => /^(image|video)\//.test(f.mimeType));
+  media.forEach((f, i) => { f._t = takenAt(f); f._n = i; });
+  media.sort((a, b) => a._t < b._t ? -1 : a._t > b._t ? 1 : a._n - b._n);
   return (folderCache[folder] = {
-    images: out.filter(f => /^(image|video)\//.test(f.mimeType)),   // photos and videos, in name order
+    images: media,   // photos and videos, oldest to newest (pre-game first)
     folders: out.filter(f => f.mimeType === "application/vnd.google-apps.folder"),
   });
 }
 const isVid = f => /^video\//.test(f.mimeType || "");
+/* When was it taken? The camera's own time (from the photo) is best. Videos and photos without it
+   fall back to the file's date. Both are turned into the same "YYYY-MM-DD HH:MM:SS" local-time form,
+   and anything with no date at all keeps its file-name order at the end of its group. */
+function takenAt(f){
+  const t = f.imageMediaMetadata && f.imageMediaMetadata.time;
+  if (t && /^\d{4}:\d\d:\d\d \d\d:\d\d:\d\d/.test(t)) return t.slice(0, 19).replace(/^(\d{4}):(\d\d):(\d\d)/, "$1-$2-$3");
+  if (f.modifiedTime){ const d = new Date(f.modifiedTime); if (!isNaN(d)){ const z = n => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}:${z(d.getSeconds())}`; } }
+  return "9999";
+}
 const mediaUrl = id => `https://www.googleapis.com/drive/v3/files/${id}?alt=media&key=${encodeURIComponent(API())}`;
 function fmtDur(ms){ if (!ms) return ""; const t = Math.round(ms / 1000), h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = String(t % 60).padStart(2, "0"); return h ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`; }
 const coverCache = {};
@@ -697,30 +713,61 @@ function scheduleBlock(target, compact){
 }
 
 /* ---------- Home-page slideshow behind the headline ---------- */
-/* Sources, in order: the Hero Photo links in Settings (one per line);
-   otherwise the cover photos of your Featured posts; with an API key,
-   the first photo from each Featured post's folder fills in the rest. */
+/* Sources, in order:
+   1) the Hero Photo links in Settings (one per line), if you've set any;
+   2) with an API key: 3 photos from each Featured gallery (start, middle, end), taking turns between events;
+   3) otherwise the cover photos of your Featured / newest posts. */
 let heroTimer = null;
+const heroW = () => Math.min(2400, Math.max(1000, Math.ceil(innerWidth * (devicePixelRatio || 1) / 200) * 200));   // right-size for the screen
 function heroSlides(top){
-  const fromSheet = String(DATA.S.herophoto || "").split(/[\s,]+/).map(x => img(x, 2200)).filter(Boolean);
-  if (fromSheet.length) return fromSheet.slice(0, 8);
-  return top.map(p => postCover(p, 2200)).filter(Boolean).slice(0, 6);
+  const fromSheet = String(DATA.S.herophoto || "").split(/[\s,]+/).map(x => img(x, heroW())).filter(Boolean);
+  if (fromSheet.length) return fromSheet.slice(0, 8).map(src => ({ src }));
+  return top.map(p => ({ src: postCover(p, heroW()), cap: p.title, href: `#/photos/${p.slug}` })).filter(x => x.src).slice(0, 6);
+}
+async function heroPicks(posts){
+  posts = posts.filter(p => p.folders[0]).slice(0, 6);
+  if (!posts.length) return [];
+  const key = posts.map(p => p.folders.join("+")).join(",");
+  try { const c = JSON.parse(localStorage.getItem("xp-hero-v1") || "null"); if (c && c.key === key && Date.now() - c.t < 864e5) return c.slides; } catch(e){}
+  const lists = await Promise.all(posts.map(async p => {
+    try {
+      const parts = await Promise.all(p.folders.map(driveList));
+      const pics = parts.flatMap(x => x.images).filter(f => !isVid(f));
+      const wide = pics.filter(f => { const m = f.imageMediaMetadata || {}, t = (m.rotation || 0) % 2 === 1, w = t ? m.height : m.width, h = t ? m.width : m.height; return !w || !h || w >= h * 1.2; });
+      const pool = wide.length >= 3 ? wide : pics;
+      const picks = [0.15, 0.5, 0.85].map(r => pool[Math.min(pool.length - 1, Math.floor(pool.length * r))]).filter(Boolean);
+      return [...new Map(picks.map(f => [f.id, f])).values()].map(f => ({ id: f.id, cap: p.title, href: `#/photos/${p.slug}` }));
+    } catch(e){ return null; }
+  }));
+  if (lists.some(l => l === null)) return lists.flatMap(l => l || []);   // a lookup failed: use what we have, don't remember it
+  const out = []; for (let r = 0; r < 3; r++) lists.forEach(l => { if (l[r]) out.push(l[r]); });
+  try { localStorage.setItem("xp-hero-v1", JSON.stringify({ key, t: Date.now(), slides: out })); } catch(e){}
+  return out;
+}
+function heroCaption(){
+  const cap = $("#heroCap"), on = document.querySelector("#heroBg img.on"); if (!cap) return;
+  if (on && on.dataset.cap){ cap.hidden = false; cap.href = on.dataset.href || "#/photos"; cap.querySelector("span").textContent = on.dataset.cap; }
+  else cap.hidden = true;
 }
 window.heroDrop = el => {
   const bg = el.parentNode, wasOn = el.classList.contains("on"); el.remove();
   if (!bg.querySelector("img")) bg.closest(".hero").classList.add("noimg");
   else if (wasOn) bg.querySelector("img").classList.add("on");
+  heroCaption();
 };
 function startHero(top){
   clearInterval(heroTimer);
   const bg = $("#heroBg"); if (!bg) return;
+  heroCaption();
   if (!String(DATA.S.herophoto || "").trim() && API()){
-    // Fill the slideshow from Featured posts' Drive folders.
-    const have = bg.querySelectorAll("img").length;
-    top.filter(p => !p.cover && p.folders[0]).slice(0, 6 - have).forEach(async p => {
-      const id = await firstImage(p.folders[0]); if (!id || !document.body.contains(bg)) return;
-      bg.insertAdjacentHTML("beforeend", `<img src="${fileImg(id, 2200)}" alt="" onerror="heroDrop(this)">`);
-      if (!bg.querySelector("img.on")){ bg.querySelector("img").classList.add("on"); $("#hero").classList.remove("noimg"); }
+    // Swap the cover photos for 3 photos from each Featured gallery. The photo on screen stays put.
+    const feat = DATA.posts.filter(p => p.featured);
+    heroPicks(feat.length ? feat : top).then(picks => {
+      if (!picks.length || !document.body.contains(bg)) return;
+      const cur = bg.querySelector("img.on");
+      [...bg.querySelectorAll("img")].forEach(x => { if (x !== cur) x.remove(); });
+      picks.forEach(sl => bg.insertAdjacentHTML("beforeend", `<img src="${fileImg(sl.id, heroW())}" alt="" loading="lazy" data-cap="${esc(sl.cap)}" data-href="${esc(sl.href)}" onerror="heroDrop(this)">`));
+      if (!cur){ const first = bg.querySelector("img"); first.loading = "eager"; first.classList.add("on"); $("#hero").classList.remove("noimg"); heroCaption(); }
     });
   }
   heroTimer = setInterval(() => {
@@ -729,7 +776,7 @@ function startHero(top){
     const i = imgs.findIndex(x => x.classList.contains("on"));
     const next = imgs[(i + 1) % imgs.length];
     if (!next.complete) { next.loading = "eager"; return; }   // wait until the next photo has loaded
-    imgs.forEach(x => x.classList.remove("on")); void next.offsetWidth; next.classList.add("on");
+    imgs.forEach(x => x.classList.remove("on")); void next.offsetWidth; next.classList.add("on"); heroCaption();
   }, 6500);
 }
 
@@ -742,12 +789,13 @@ function pageHome(){
   const latest = posts[0];
   return `
   <section class="hero ${slides.length ? "" : "noimg"}" id="hero">
-    <div class="bg" id="heroBg">${slides.map((src, i) => `<img src="${esc(src)}" alt=""${i ? ' loading="lazy"' : ""} class="${i ? "" : "on"}" onerror="heroDrop(this)">`).join("")}</div>
+    <div class="bg" id="heroBg">${slides.map((sl, i) => `<img src="${esc(sl.src)}" alt=""${i ? ' loading="lazy"' : ""} class="${i ? "" : "on"}"${sl.cap ? ` data-cap="${esc(sl.cap)}" data-href="${esc(sl.href)}"` : ""} onerror="heroDrop(this)">`).join("")}</div>
     <div class="wrap inner">
       <div class="eyebrow">${esc(S.location || "")}</div>
       <h1 class="display">${headline(S.headline || "Every *note*. | Every play. | Every parade.")}</h1>
       <p class="lead">${esc(S.tagline || "")}</p>
       <div class="ctas"><a class="btn primary" href="#/photos">See the latest photos ${ICON.arrow}</a><a class="btn" href="#/schedule">${ICON.cal} Where I'll be</a></div>
+      <a class="hero-cap" id="heroCap" hidden>${ICON.cam.replace('stroke-width="1.6"', 'stroke-width="2"')}<span></span></a>
     </div>
     ${latest ? `<a class="latest" href="#/photos/${esc(latest.slug)}"><span class="eyebrow">Just posted</span><b>${esc(latest.title)}</b><span class="muted" style="font-size:13px">${esc(latest.date)}</span></a>` : ""}
   </section>
