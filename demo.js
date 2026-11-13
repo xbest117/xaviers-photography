@@ -82,6 +82,10 @@ window.DEMO_DATA = {
    "value": "2022"
   },
   {
+   "setting": "Google Analytics ID",
+   "value": ""
+  },
+  {
    "setting": "Accent Color",
    "value": ""
   }

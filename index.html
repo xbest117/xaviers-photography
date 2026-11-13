@@ -9,6 +9,38 @@
 <meta property="og:description" content="Marching bands, Friday nights, parades and community events across Tuscarawas County, Ohio.">
 <meta property="og:image" content="https://xaviers-photography.com/icons/share.png">
 <meta property="og:type" content="website">
+<link rel="canonical" href="https://xaviers-photography.com/">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "ProfessionalService",
+      "@id": "https://xaviers-photography.com/#business",
+      "name": "Xavier's Photography",
+      "description": "Free photos of high school marching bands, football, parades, graduations and community events across Tuscarawas County, Ohio.",
+      "url": "https://xaviers-photography.com/",
+      "logo": "https://xaviers-photography.com/icons/icon-512.png",
+      "image": "https://xaviers-photography.com/icons/share.png",
+      "foundingDate": "2022",
+      "areaServed": [
+        { "@type": "AdministrativeArea", "name": "Tuscarawas County, Ohio" },
+        { "@type": "City", "name": "Dover, Ohio" },
+        { "@type": "City", "name": "New Philadelphia, Ohio" }
+      ],
+      "knowsAbout": ["Marching band photography", "High school football photography", "Parade photography", "Graduation photography", "Event photography"],
+      "sameAs": ["https://www.facebook.com/xaviersphotographyohio", "https://www.instagram.com/xaviersphotographyohio/"]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://xaviers-photography.com/#website",
+      "name": "Xavier's Photography",
+      "url": "https://xaviers-photography.com/",
+      "publisher": { "@id": "https://xaviers-photography.com/#business" }
+    }
+  ]
+}
+</script>
 <meta name="theme-color" content="#0b0b0c">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="manifest" href="manifest.webmanifest">
@@ -221,15 +253,27 @@ div.ph.empty,.noimg-box{display:grid;place-items:center;background:
 .credit{display:flex;gap:10px;align-items:center;font-size:14px;color:var(--muted);margin:18px 0 0}
 .credit svg{width:16px;height:16px;color:var(--accent-text);flex:none}
 .photos{columns:4 260px;column-gap:12px;margin-top:0}
-@media (max-width:600px){.photos{columns:2;column-gap:8px}.photos button{margin-bottom:8px}}
-.photos button{display:block;width:100%;margin:0 0 12px;padding:0;border:0;background:var(--card);border-radius:8px;overflow:hidden;cursor:zoom-in;break-inside:avoid}
+.photos .tile{position:relative;margin:0 0 12px;break-inside:avoid}
+@media (max-width:600px){.photos{columns:2;column-gap:8px}.photos .tile{margin-bottom:8px}}
+.photos .open{display:block;width:100%;margin:0;padding:0;border:0;background:var(--card);border-radius:8px;overflow:hidden;cursor:zoom-in}
+.photos .fav{position:absolute;top:8px;right:8px;width:38px;height:38px;border-radius:50%;border:0;background:rgba(11,11,12,.55);color:#fff;display:grid;place-items:center;cursor:pointer;opacity:0;transition:opacity .2s,background .2s}
+.photos .tile:hover .fav,.photos .fav.on,.photos .fav:focus-visible{opacity:1}
+@media (hover:none){.photos .fav{opacity:1;background:rgba(11,11,12,.42)}}
+.photos .fav svg,.lb #lbFav svg,.links .favlink svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2}
+.photos .fav.on,.lb #lbFav.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.photos .fav.on svg,.lb #lbFav.on svg{fill:currentColor}
+.links .favlink{display:inline-flex;align-items:center;gap:6px}
+.links .favlink .n{font-size:12px;font-weight:700;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--accent);color:#fff;display:inline-grid;place-items:center}
+.fav-actions{display:flex;gap:10px;flex-wrap:wrap}
+.fav-actions .btn{padding:10px 16px;font-size:14px}
+.share-btn svg{width:17px;height:17px}
 .photos img{width:100%;height:auto;object-fit:cover;transition:opacity .4s,transform .4s;opacity:0}
 .photos img.ld{opacity:1}
-.photos button.vid{position:relative}
+.photos .open.vid{position:relative}
 .photos img.novid{background:#141416;aspect-ratio:16/9;min-height:120px}
 .photos .play{position:absolute;left:10px;bottom:10px;display:inline-flex;align-items:center;gap:6px;padding:6px 10px 6px 8px;border-radius:999px;background:rgba(11,11,12,.78);color:#fff;font-size:13px;font-weight:600}
 .photos .play svg{width:16px;height:16px}
-.photos button:hover img{transform:scale(1.02)}
+.photos .open:hover img{transform:scale(1.02)}
 .subfolders{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:22px}
 .subfolders a{display:flex;gap:12px;align-items:center;padding:16px 18px;border-radius:12px;border:1px solid var(--line);background:var(--card);text-decoration:none;font-weight:600}
 .subfolders a:hover{border-color:var(--accent-text)}
@@ -300,18 +344,25 @@ footer{border-top:1px solid var(--line);padding:64px 0 40px}
       <a href="#/albums" data-r="albums">Albums</a>
       <a href="#/schedule" data-r="schedule">Where I'll Be</a>
       <a href="#/about" data-r="about">About</a>
+      <a href="#/favorites" data-r="favorites" class="favlink" id="favLink" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7.5-4.6-7.5-10.1A4.3 4.3 0 0 1 12 7.4a4.3 4.3 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20z"/></svg>Favorites <span class="n">0</span></a>
       <a href="#" data-install hidden>Install the app</a>
     </nav>
     <div class="social" id="social"></div>
     <button class="icon-btn menu-btn" id="menuBtn" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
   </div>
 </header>
-<main id="app"><div class="spinner"></div></main>
+<main id="app"><div class="spinner"></div>
+<noscript><div class="wrap" style="padding:60px 24px">
+  <h1>Xavier's Photography</h1>
+  <p>Free photos of Dover and New Philadelphia high school marching bands, football games, parades, graduations, concerts and community events across Tuscarawas County, Ohio, since 2022.</p>
+  <p>Turn on JavaScript to browse galleries, or follow along on <a href="https://www.facebook.com/xaviersphotographyohio">Facebook</a> and <a href="https://www.instagram.com/xaviersphotographyohio/">Instagram</a>.</p>
+</div></noscript></main>
 <footer id="footer" class="light"></footer>
 
 <div class="lb" id="lb" role="dialog" aria-modal="true" aria-label="Photo viewer">
   <div class="bar">
     <span class="count" id="lbCount"></span>
+    <button class="icon-btn" id="lbFav" aria-label="Add to favorites" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7.5-4.6-7.5-10.1A4.3 4.3 0 0 1 12 7.4a4.3 4.3 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20z"/></svg></button>
     <a class="btn primary" id="lbOpen" target="_blank" rel="noopener">Download photo</a>
     <button class="icon-btn" id="lbClose" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
   </div>
@@ -340,7 +391,7 @@ footer{border-top:1px solid var(--line);padding:64px 0 40px}
 (function(){
 "use strict";
 /* Site version: bumped with every design/code update. See the changelog in README.md. */
-const SITE_VERSION = "1.10";   /* keep in step with VERSION in sw.js */
+const SITE_VERSION = "1.12";   /* keep in step with VERSION in sw.js */
 const CFG = window.SITE_CONFIG || {};
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -350,6 +401,7 @@ const no = v => /^(n|no|false|hide|hidden|0)$/i.test(String(v || "").trim());
 const slugify = s => String(s).toLowerCase().normalize("NFKD").replace(/[^\w\s-]/g, "").trim().replace(/[\s_]+/g, "-").replace(/-+/g, "-").slice(0, 80);
 
 const ICON = {
+  share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>',
   cam: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
   fb: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 21v-7.5h2.5l.4-3h-2.9V8.6c0-.9.3-1.5 1.5-1.5h1.5V4.4c-.3 0-1.2-.1-2.2-.1-2.2 0-3.7 1.3-3.7 3.8v2.4H8v3h2.6V21z"/></svg>',
   ig: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r="1" fill="currentColor"/></svg>',
@@ -448,14 +500,33 @@ const isVid = f => /^video\//.test(f.mimeType || "");
 const mediaUrl = id => `https://www.googleapis.com/drive/v3/files/${id}?alt=media&key=${encodeURIComponent(API())}`;
 function fmtDur(ms){ if (!ms) return ""; const t = Math.round(ms / 1000), h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = String(t % 60).padStart(2, "0"); return h ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`; }
 const coverCache = {};
-async function firstImage(folder){
-  if (folder in coverCache) return coverCache[folder];
-  try {
-    const p = new URLSearchParams({ q: `'${folder}' in parents and trashed=false and mimeType contains 'image/'`, key: API(), pageSize: "1", orderBy: "name", fields: "files(id)" });
-    const r = await fetch("https://www.googleapis.com/drive/v3/files?" + p);
-    const j = await r.json();
-    coverCache[folder] = j.files && j.files[0] ? j.files[0].id : null;
-  } catch(e){ coverCache[folder] = null; }
+/* Pick a cover photo for a Drive folder automatically (API key only):
+   1) a photo with "cover" in its file name, if you've named one;
+   2) otherwise a photo about a third of the way in (skips warm-up and test shots);
+   3) a folder with no photos of its own borrows one from its sub-folders. */
+/* Covers are remembered on the visitor's device for a day, so repeat visits skip the Drive lookups. */
+const COVER_KEY = "xp-covers-v1", COVER_TTL = 864e5;
+const COVER_LS = (() => { try { return JSON.parse(localStorage.getItem(COVER_KEY) || "{}"); } catch(e){ return {}; } })();
+function coverStore(folder, id){
+  COVER_LS[folder] = { id, t: Date.now() };
+  for (const k in COVER_LS) if (Date.now() - COVER_LS[k].t > 7 * COVER_TTL) delete COVER_LS[k];
+  try { localStorage.setItem(COVER_KEY, JSON.stringify(COVER_LS)); } catch(e){}
+}
+function firstImage(folder, depth = 0){
+  const saved = COVER_LS[folder];
+  if (depth === 0 && saved && Date.now() - saved.t < COVER_TTL) return Promise.resolve(saved.id);
+  if (!(folder in coverCache)) coverCache[folder] = (async () => {
+    try {
+      const { images, folders } = await driveList(folder);
+      const pics = images.filter(f => !isVid(f));
+      const named = pics.find(f => /cover/i.test(f.name));
+      if (named) return named.id;
+      if (pics.length) return pics[Math.min(pics.length - 1, Math.floor(pics.length * 0.3))].id;
+      if (depth < 3) for (const sub of folders){ const id = await firstImage(sub.id, depth + 1); if (id) return id; }
+      const vid = images.find(isVid);
+      return vid ? vid.id : null;
+    } catch(e){ return undefined; }   // undefined = lookup failed, don't remember it
+  })().then(id => { if (depth === 0 && id !== undefined) coverStore(folder, id); return id || null; });
   return coverCache[folder];
 }
 /* Fill in missing card covers from the first photo in the Drive folder (API key only). */
@@ -497,10 +568,26 @@ function cached(){
   try { const c = localStorage.getItem(CACHE_KEY); return c ? shape(JSON.parse(c)) : null; } catch(e){ return null; }
 }
 
+/* ---------- Visitor stats (Google Analytics 4, only if an ID is set in the Sheet) ---------- */
+let GA_ON = false;
+function initAnalytics(){
+  const id = String(DATA.S.googleanalyticsid || "").trim();
+  if (GA_ON || !/^G-[A-Z0-9]{4,}$/i.test(id)) return;
+  GA_ON = true;
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = function(){ dataLayer.push(arguments); };
+  gtag("js", new Date());
+  gtag("config", id, { send_page_view: false });   // page views are sent by the router, so every page counts
+  const sc = document.createElement("script"); sc.async = true; sc.src = "https://www.googletagmanager.com/gtag/js?id=" + encodeURIComponent(id);
+  document.head.appendChild(sc);
+}
+function track(name, params = {}){ if (GA_ON && window.gtag) gtag("event", name, params); }
+
 /* ---------- Shell (header, footer) ---------- */
 function shell(){
   const S = DATA.S, name = S.sitename || "Xavier's Photography";
   document.title = name;
+  initAnalytics(); updateFavNav();
   if (S.accentcolor && CSS.supports("color", S.accentcolor)){ const r = document.documentElement.style; r.setProperty("--accent", S.accentcolor); r.setProperty("--accent-text", `color-mix(in srgb, ${S.accentcolor} 70%, white)`); }
   $("#brand").innerHTML = `<img src="${esc(S.logo ? img(S.logo, 200) : "icons/logo.png")}" alt="${esc(name)} logo"><span class="name">${esc(name)}</span>`;
   const a = $("#announce");
@@ -570,6 +657,15 @@ function fitHeadline(){
 addEventListener("resize", fitHeadline);
 if (document.fonts){ document.fonts.ready.then(fitHeadline); document.fonts.addEventListener("loadingdone", fitHeadline); }
 function paragraphs(t){ return String(t || "").split(/\n\s*\n/).map(x => x.trim()).filter(Boolean).map(x => `<p>${esc(x).replace(/\n/g, "<br>")}</p>`).join(""); }
+function shareBtn(title){ return `<button class="btn share-btn" data-share="${esc(title)}">${ICON.share} Share</button>`; }
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-share]"); if (!b) return;
+  const title = b.dataset.share, url = location.href, site = DATA.S.sitename || "Xavier's Photography";
+  track("share", { item: title });
+  if (navigator.share){ try { await navigator.share({ title: `${title} · ${site}`, text: `${title}: free photos from ${site}`, url }); } catch(err){} return; }
+  try { await navigator.clipboard.writeText(url); msg("✓ Link copied. Paste it anywhere to share."); }
+  catch(err){ msg("Copy this link to share: " + url, 9000); }
+});
 function sectionHead(eyebrow, title, moreHref, moreText){
   return `<div class="sec-head"><div><div class="eyebrow">${esc(eyebrow)}</div><h2 class="display">${title}</h2></div>${moreHref ? `<a class="more" href="${moreHref}">${moreText} →</a>` : ""}</div>`;
 }
@@ -707,6 +803,7 @@ function pagePost(slug){
       <h1 class="display">${esc(p.title)}</h1>
       <div class="story">${paragraphs(p.story)}</div>
       <div class="actions">${API() ? `<a class="btn primary" href="#gallery" onclick="document.getElementById('gallery').scrollIntoView({behavior:'smooth'});return false">${ICON.cam.replace('stroke-width="1.6"','stroke-width="2" width="17" height="17"')} View the photos</a>` : p.folders.map((f, i) => `<a class="btn primary" href="${folderUrl(f)}" target="_blank" rel="noopener">${ICON.drive} ${p.folders.length > 1 ? "Folder " + (i + 1) + ": " : ""}Full-resolution on Google Drive</a>`).join("")}
+        ${shareBtn(p.title)}
         ${S.facebook ? `<a class="btn" href="${esc(S.facebook)}" target="_blank" rel="noopener">${ICON.fb} Follow on Facebook</a>` : ""}</div>
       ${S.creditnote ? `<p class="credit">${ICON.heart}${esc(S.creditnote)}</p>` : ""}
       ${API() ? `<p class="credit">${ICON.arrow.replace("<svg", '<svg width="16" height="16"')}Tap any photo to see it full-screen and download the original.</p>` : ""}
@@ -758,10 +855,146 @@ function pageAlbum(folder){
     <div class="crumbs">${trail.map(t => `<a href="${esc(t.href)}">${esc(t.label)}</a><span>/</span>`).join("")}<span id="albumCrumb">${esc(title)}</span></div>
     <h1 class="display" id="albumTitle" style="margin-top:22px">${esc(title)}</h1>
     ${a && a.description ? `<div class="story"><p>${esc(a.description)}</p></div>` : ""}
-    ${API() ? "" : `<div class="actions"><a class="btn primary" href="${folderUrl(folder)}" target="_blank" rel="noopener">${ICON.drive} Open in Google Drive</a></div>`}
+    <div class="actions">${API() ? "" : `<a class="btn primary" href="${folderUrl(folder)}" target="_blank" rel="noopener">${ICON.drive} Open in Google Drive</a>`}${shareBtn(title)}</div>
     ${DATA.S.creditnote ? `<p class="credit">${ICON.heart}${esc(DATA.S.creditnote)}</p>` : ""}
     ${API() ? `<p class="credit">${ICON.arrow.replace("<svg", '<svg width="16" height="16"')}Tap any photo to see it full-screen and download the original.</p>` : ""}</div></div>
     <section class="light block-sm"><div class="wrap"><div id="gallery"></div></div></section>`;
+}
+function pageFavorites(){
+  return `<div class="wrap"><div class="page-head"><div class="eyebrow">Saved on this device</div><h1 class="display">Favorites</h1>
+    <p>Tap the ♥ on any photo to keep it here, then ${isIOS ? "save them all to your Photos" : "download them all"} at once.</p></div></div>
+    <section class="light block-sm"><div class="wrap" id="favWrap"></div></section>`;
+}
+const BATCH = { files: null, next: 0 };
+function allLabel(){ return isIOS ? "Save all to Photos" : (/android/i.test(navigator.userAgent) ? "Download all" : "Download all (ZIP)"); }
+function renderFavs(keepScroll){
+  const w = $("#favWrap"); if (!w) return;
+  BATCH.files = null; BATCH.next = 0;
+  if (!FAVS.length){
+    w.innerHTML = `<div class="empty-state">No favorites yet. Tap the ♥ on any photo to add it here.<div class="actions" style="justify-content:center"><a class="btn primary" href="#/photos">Browse photos</a></div></div>`;
+    return;
+  }
+  const n = FAVS.length, y = scrollY;
+  w.innerHTML = `<div class="gal-bar"><span class="count">${n} favorite${n === 1 ? "" : "s"}</span>
+    <div class="fav-actions"><button class="btn primary" id="favAll">${allLabel()}</button><button class="btn" id="favClear">Clear all</button></div></div>
+    <div class="photos" id="photos">${FAVS.map((f, i) => tileHTML(f, i)).join("")}</div>`;
+  if (keepScroll) scrollTo(0, y);
+  $("#photos", w).onclick = e => {
+    const fb = e.target.closest("button[data-fav]");
+    if (fb){ toggleFav(FAVS[+fb.dataset.fav]); renderFavs(true); return; }
+    const b = e.target.closest("button[data-i]");
+    if (b){ LB.list = FAVS.slice(); LB.ctx = null; openLB(+b.dataset.i); }
+  };
+  $("#favAll").onclick = saveAllFavs;
+  $("#favClear").onclick = e => {
+    const btn = e.currentTarget;
+    if (btn.dataset.armed){ FAVS = []; try { localStorage.setItem(FAV_KEY, "[]"); } catch(err){} updateFavNav(); renderFavs(); msg("Favorites cleared"); return; }
+    btn.dataset.armed = "1"; btn.textContent = "Tap again to clear";
+    setTimeout(() => { if (document.body.contains(btn)){ delete btn.dataset.armed; btn.textContent = "Clear all"; } }, 3500);
+  };
+}
+function downloadBlob(blob, name){
+  const url = URL.createObjectURL(blob), a = document.createElement("a");
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+async function saveAllFavs(e){
+  const btn = e.currentTarget; if (btn.dataset.busy) return;
+  const items = FAVS.filter(f => !(isVid(f) && +f.size > videoBlobLimit()));
+  const skipped = FAVS.length - items.length;
+  const skipNote = skipped ? ` (${skipped} large video${skipped === 1 ? "" : "s"} skipped; open ${skipped === 1 ? "it" : "them"} to download)` : "";
+  if (!items.length){ msg("These videos are too large to save together. Open each one to download it.", 6000); return; }
+  if (!BATCH.files && !BATCH.next) track("download_all", { count: items.length });
+  if (isIOS && navigator.canShare) return iosBatch(btn, items, skipNote);
+  if (/android/i.test(navigator.userAgent)) return androidAll(btn, items, skipNote);
+  return zipAll(btn, items, skipNote);
+}
+/* iPhone: the share sheet's "Save Images" puts them in Photos. Done 10 at a time so phones don't run out of memory. */
+async function iosBatch(btn, items, skipNote){
+  if (BATCH.files) return shareBatch(btn, items, skipNote);
+  const part = items.slice(BATCH.next, BATCH.next + 10);
+  btn.dataset.busy = "1";
+  try {
+    const files = [];
+    for (let k = 0; k < part.length; k++){ btn.textContent = `Preparing ${k + 1} of ${part.length}…`; const blob = await fetchFull(part[k], () => {}); files.push(new File([blob], saveName(part[k]), { type: blob.type })); }
+    BATCH.files = files;
+  } catch(err){ delete btn.dataset.busy; btn.textContent = allLabel(); msg("Couldn’t prepare those photos. Please try again."); return; }
+  delete btn.dataset.busy;
+  return shareBatch(btn, items, skipNote);
+}
+async function shareBatch(btn, items, skipNote){
+  const files = BATCH.files;
+  try { await navigator.share({ files }); }
+  catch(err){
+    btn.textContent = `Tap to save ${files.length}`;
+    if (err.name === "NotAllowedError") msg("Ready! Tap the button again to save them.", 6000);
+    return;
+  }
+  BATCH.files = null; BATCH.next += files.length;
+  if (BATCH.next < items.length){
+    const a = BATCH.next + 1, b = Math.min(items.length, BATCH.next + 10);
+    btn.textContent = `Save next ${b - a + 1} (${a}–${b} of ${items.length})`;
+    msg(`✓ ${BATCH.next} of ${items.length} done. Tap the button for the next batch.`, 6000);
+  } else {
+    BATCH.next = 0; btn.textContent = allLabel();
+    msg(`✓ All done! If you tapped “Save Images,” they’re in your Photos app.${skipNote}`, 7000);
+  }
+}
+/* Android: one download per photo; they show up in Gallery / Google Photos. */
+async function androidAll(btn, items, skipNote){
+  btn.dataset.busy = "1"; let ok = 0;
+  for (let k = 0; k < items.length; k++){
+    btn.textContent = `Downloading ${k + 1} of ${items.length}…`;
+    try { const blob = await fetchFull(items[k], () => {}); downloadBlob(blob, saveName(items[k])); ok++; await new Promise(r => setTimeout(r, 500)); } catch(err){}
+  }
+  delete btn.dataset.busy; btn.textContent = allLabel();
+  msg(`✓ Downloaded ${ok}! They’re in your Downloads and Gallery / Photos app.${skipNote}`, 7000);
+}
+/* Computers: one ZIP file (split into parts of 50 for very large sets). */
+const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++){ let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(u8){ let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC_T[(c ^ u8[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function makeZip(entries){
+  const enc = new TextEncoder(), parts = [], central = []; let offset = 0;
+  const d = new Date(), time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1), date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  for (const e of entries){
+    const nm = enc.encode(e.name), crc = crc32(e.data), sz = e.data.length;
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(8, 0, true);
+    lh.setUint16(10, time, true); lh.setUint16(12, date, true); lh.setUint32(14, crc, true); lh.setUint32(18, sz, true); lh.setUint32(22, sz, true);
+    lh.setUint16(26, nm.length, true); lh.setUint16(28, 0, true);
+    parts.push(lh.buffer, nm, e.data);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(10, 0, true);
+    ch.setUint16(12, time, true); ch.setUint16(14, date, true); ch.setUint32(16, crc, true); ch.setUint32(20, sz, true); ch.setUint32(24, sz, true);
+    ch.setUint16(28, nm.length, true); ch.setUint32(42, offset, true);
+    central.push(ch.buffer, nm);
+    offset += 30 + nm.length + sz;
+  }
+  const cdSize = central.reduce((n, p) => n + p.byteLength, 0), end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, entries.length, true); end.setUint16(10, entries.length, true); end.setUint32(12, cdSize, true); end.setUint32(16, offset, true);
+  return new Blob([...parts, ...central, end.buffer], { type: "application/zip" });
+}
+async function zipAll(btn, items, skipNote){
+  btn.dataset.busy = "1";
+  const groups = []; for (let i = 0; i < items.length; i += 50) groups.push(items.slice(i, i + 50));
+  let done = 0;
+  try {
+    for (let g = 0; g < groups.length; g++){
+      const entries = [], used = {};
+      for (const f of groups[g]){
+        btn.textContent = `Preparing ${++done} of ${items.length}…`;
+        try {
+          const blob = await fetchFull(f, () => {});
+          let name = saveName(f); if (used[name]) name = name.replace(/(\.\w+)$/, `-${++used[name]}$1`); else used[name] = 1;
+          entries.push({ name, data: new Uint8Array(await blob.arrayBuffer()) });
+        } catch(err){}
+      }
+      btn.textContent = "Zipping…";
+      downloadBlob(makeZip(entries), `Xaviers-Photography-Favorites${groups.length > 1 ? "-part" + (g + 1) : ""}.zip`);
+    }
+    msg(`✓ Downloaded ${groups.length > 1 ? groups.length + " ZIP files" : "a ZIP file"} to your Downloads folder.${skipNote}`, 7000);
+  } catch(err){ msg("Something went wrong making the ZIP. Please try again."); }
+  delete btn.dataset.busy; btn.textContent = allLabel();
 }
 function pageSchedule(){ return `<div class="wrap" style="padding-top:56px" id="pageSched"></div>`; }
 function pageAbout(){ return `<div class="wrap" style="padding-top:56px">${aboutBlock()}</div>`; }
@@ -793,29 +1026,63 @@ async function mountGallery(el, folders, ctx = { href: "#/albums", label: "Album
     el.innerHTML = html;
     LB.list = images;
     const box = $("#photos", el), more = $("#more", el);
+    const favCtx = { title: ctx.label, href: ctx.href };
     let shown = 0; const STEP = 60;
     const add = () => {
       const next = images.slice(shown, shown + STEP);
-      box.insertAdjacentHTML("beforeend", next.map((f, k) => {
-        if (isVid(f)){
-          const v = f.videoMediaMetadata || {}, vr = v.width && v.height ? `${v.width}/${v.height}` : "16/9";
-          return `<button data-i="${shown + k}" class="vid" aria-label="Play video ${esc(f.name)}"><img style="aspect-ratio:${vr}" loading="lazy" src="${fileImg(f.id, 800)}" alt="" onload="this.style.aspectRatio=this.naturalWidth+'/'+this.naturalHeight;this.classList.add('ld')" onerror="this.removeAttribute('src');this.classList.add('ld','novid')"><span class="play"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>${fmtDur(v.durationMillis)}</span></button>`;
-        }
-        const m = f.imageMediaMetadata || {}, turned = (m.rotation || 0) % 2 === 1;
-        const w = turned ? m.height : m.width, h = turned ? m.width : m.height;
-        const ratio = w && h ? `style="aspect-ratio:${w}/${h}"` : "";
-        return `<button data-i="${shown + k}" aria-label="Open photo"><img ${ratio} loading="lazy" src="${fileImg(f.id, 800)}" alt="${esc(f.name)}" onload="this.style.aspectRatio=this.naturalWidth+'/'+this.naturalHeight;this.classList.add('ld')"></button>`; }).join(""));
+      box.insertAdjacentHTML("beforeend", next.map((f, k) => tileHTML(f, shown + k)).join(""));
       shown += next.length;
       more.innerHTML = shown < images.length ? `<button class="btn">Show more (${images.length - shown} left)</button>` : "";
     };
     add();
     more.onclick = add;
-    box.onclick = e => { const b = e.target.closest("button[data-i]"); if (b) openLB(+b.dataset.i); };
+    box.onclick = e => {
+      const fb = e.target.closest("button[data-fav]");
+      if (fb){ const on = toggleFav(images[+fb.dataset.fav], favCtx); if (on) msg("♥ Added to your Favorites"); return; }
+      const b = e.target.closest("button[data-i]");
+      if (b){ LB.list = images; LB.ctx = favCtx; openLB(+b.dataset.i); }
+    };
     if (!images.length && !subs.length) el.innerHTML = `<p class="muted">No photos in this folder yet.</p>`;
   } catch(e){
     el.innerHTML = folders.map(f => `<div class="drive-embed"><iframe title="Photos" loading="lazy" src="https://drive.google.com/embeddedfolderview?id=${f}#grid"></iframe></div>`).join("");
   }
 }
+const HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7.5-4.6-7.5-10.1A4.3 4.3 0 0 1 12 7.4a4.3 4.3 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20z"/></svg>';
+function tileHTML(f, i, label){
+  const on = isFav(f.id);
+  const heart = `<button class="fav${on ? " on" : ""}" data-fav="${i}" data-id="${f.id}" aria-pressed="${on}" aria-label="${on ? "Remove from" : "Add to"} favorites">${HEART}</button>`;
+  if (isVid(f)){
+    const v = f.videoMediaMetadata || {}, vr = v.width && v.height ? `${v.width}/${v.height}` : "16/9";
+    return `<div class="tile"><button class="open vid" data-i="${i}" aria-label="Play video ${esc(f.name)}"><img style="aspect-ratio:${vr}" loading="lazy" src="${fileImg(f.id, 800)}" alt="" onload="this.style.aspectRatio=this.naturalWidth+'/'+this.naturalHeight;this.classList.add('ld')" onerror="this.removeAttribute('src');this.classList.add('ld','novid')"><span class="play"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>${fmtDur(v.durationMillis)}</span></button>${heart}</div>`;
+  }
+  const m = f.imageMediaMetadata || {}, turned = (m.rotation || 0) % 2 === 1;
+  const w = turned ? m.height : m.width, h = turned ? m.width : m.height;
+  const ratio = w && h ? `style="aspect-ratio:${w}/${h}"` : "";
+  return `<div class="tile"><button class="open" data-i="${i}" aria-label="Open photo"><img ${ratio} loading="lazy" src="${fileImg(f.id, 800)}" alt="${esc(f.name)}" onload="this.style.aspectRatio=this.naturalWidth+'/'+this.naturalHeight;this.classList.add('ld')"></button>${heart}</div>`;
+}
+/* ---------- Favorites (saved on the visitor's device) ---------- */
+const FAV_KEY = "xp-favs-v1";
+let FAVS = (() => { try { return JSON.parse(localStorage.getItem(FAV_KEY) || "[]"); } catch(e){ return []; } })();
+const isFav = id => FAVS.some(x => x.id === id);
+function syncHearts(id){
+  const on = isFav(id);
+  document.querySelectorAll(`.fav[data-id="${id}"]`).forEach(b => { b.classList.toggle("on", on); b.setAttribute("aria-pressed", on); b.setAttribute("aria-label", (on ? "Remove from" : "Add to") + " favorites"); });
+  const f = LB.list[LB.i], lf = $("#lbFav");
+  if (f && f.id === id){ lf.classList.toggle("on", on); lf.setAttribute("aria-pressed", on); lf.setAttribute("aria-label", (on ? "Remove from" : "Add to") + " favorites"); }
+}
+function updateFavNav(){ const a = $("#favLink"); a.hidden = !FAVS.length; a.querySelector(".n").textContent = FAVS.length; }
+function toggleFav(f, ctx){
+  if (isFav(f.id)){ FAVS = FAVS.filter(x => x.id !== f.id); track("favorite_remove", { item: f.name }); }
+  else {
+    FAVS.unshift({ id: f.id, name: f.name, mimeType: f.mimeType, size: f.size, imageMediaMetadata: f.imageMediaMetadata, videoMediaMetadata: f.videoMediaMetadata,
+      from: (ctx && ctx.title) || f.from || "", href: (ctx && ctx.href) || f.href || "", t: Date.now() });
+    track("favorite_add", { item: f.name, gallery: (ctx && ctx.title) || "" });
+  }
+  try { localStorage.setItem(FAV_KEY, JSON.stringify(FAVS)); } catch(e){}
+  updateFavNav(); syncHearts(f.id);
+  return isFav(f.id);
+}
+$("#lbFav").onclick = () => { const f = LB.list[LB.i]; if (!f) return; const on = toggleFav(f, LB.ctx); msg(on ? "♥ Added to your Favorites" : "Removed from Favorites", 2500); if ($("#favWrap")) renderFavs(true); };
 function openLB(i){ LB.i = i; $("#lb").classList.add("open"); document.body.style.overflow = "hidden"; showLB(); }
 function stopVideo(){
   const v = $("#lbVid"); v.pause(); v.removeAttribute("src"); v.removeAttribute("poster"); v.load(); v.hidden = true;
@@ -839,6 +1106,7 @@ function showLB(){
     const big = new Image(); big.onload = () => { if (LB.tok === tok){ im.src = hi; im.classList.remove("loading"); } }; big.src = hi;
   }
   $("#lbCount").textContent = `${LB.i + 1} / ${n}`;
+  syncHearts(f.id);
   const sb = $("#lbOpen"); sb.href = `https://drive.google.com/uc?export=download&id=${f.id}`;
   if (!sb.dataset.busy) sb.textContent = SAVE.id === f.id && SAVE.pending ? "Tap to save" : saveLabel(f);
   [LB.i + 1, LB.i - 1].forEach(j => { const g = LB.list[(j + n) % n]; if (g && !isVid(g)) new Image().src = fileImg(g.id, 2400); });
@@ -875,6 +1143,7 @@ async function deliver(f, blob){
   if (isIOS && navigator.canShare){
     const file = new File([blob], name, { type: blob.type || "image/jpeg" });
     if (navigator.canShare({ files: [file] })){
+      track("file_download", { file_name: name, kind: isVid(f) ? "video" : "photo", method: "share_sheet" });
       try { await navigator.share({ files: [file] }); msg(`✓ Done! If you tapped “${isVid(f) ? "Save Video" : "Save Image"},” it’s in your Photos app.`); }
       catch (e){ if (e.name === "NotAllowedError") throw e; }   // AbortError = they closed the share sheet
       return;
@@ -883,6 +1152,7 @@ async function deliver(f, blob){
   const url = URL.createObjectURL(blob), a = document.createElement("a");
   a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 60000);
+  track("file_download", { file_name: name, kind: isVid(f) ? "video" : "photo", method: "download" });
   msg(/android/i.test(navigator.userAgent) ? "✓ Downloaded! It’s in your Downloads and Gallery / Photos app." : "✓ Downloaded to your Downloads folder.");
 }
 $("#lbOpen").addEventListener("click", async e => {
@@ -934,7 +1204,7 @@ function updateInstallUI(){
   document.querySelectorAll("[data-install]").forEach(el => el.hidden = !show);
 }
 addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; updateInstallUI(); });
-addEventListener("appinstalled", () => { installEvt = null; updateInstallUI(); });
+addEventListener("appinstalled", () => { installEvt = null; updateInstallUI(); track("app_installed"); });
 document.addEventListener("click", async e => {
   if (!e.target.closest("[data-install]")) return;
   e.preventDefault();
@@ -954,6 +1224,25 @@ if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)){
     let reloading = false;
     navigator.serviceWorker.addEventListener("controllerchange", () => { if (!reloading){ reloading = true; location.reload(); } });
   });
+}
+
+/* ---------- Page titles + descriptions (shown in Google results, browser tabs and shares) ---------- */
+function setMeta(a, b){
+  const S = DATA.S, site = S.sitename || "Xavier's Photography", loc = S.location || "Tuscarawas County, Ohio";
+  let title = site, desc = S.tagline || `Free photos of marching bands, football, parades and community events in ${loc}.`;
+  if (a === "photos" && b){
+    const p = DATA.posts.find(x => x.slug === b);
+    if (p){ title = `${p.title} Photos · ${site}`; desc = (p.story ? p.story.replace(/\s+/g, " ").slice(0, 150) + " " : "") + `Free photos from ${p.title}${p.date ? " (" + p.date + ")" : ""}.`; }
+  }
+  else if (a === "photos"){ title = `Photos · ${site}`; desc = `Every event, newest first: football, marching band, concerts, parades and graduations in ${loc}. Free to download.`; }
+  else if (a === "albums" && b){ const n = folderName(b) || "Album"; title = `${n} · ${site}`; desc = `${n}: full-resolution photos from ${site}, free to download.`; }
+  else if (a === "albums"){ title = `Albums · ${site}`; desc = `Full-resolution photo albums by season and category from ${site}, ${loc}.`; }
+  else if (a === "schedule"){ title = `Where I'll Be · ${site}`; desc = `Upcoming events ${site} will be photographing around ${loc}.`; }
+  else if (a === "about"){ title = `About · ${site}`; }
+  else if (a === "favorites"){ title = `Favorites · ${site}`; }
+  document.title = title;
+  const m = document.querySelector('meta[name="description"]'); if (m) m.setAttribute("content", desc);
+  const og = document.querySelector('meta[property="og:title"]'); if (og) og.setAttribute("content", title);
 }
 
 /* ---------- Router ---------- */
@@ -978,8 +1267,11 @@ function route(){
   else if (a === "albums"){ app.innerHTML = pageAlbums(); autoCovers(app); }
   else if (a === "schedule"){ app.innerHTML = pageSchedule(); scheduleBlock($("#pageSched")); }
   else if (a === "about"){ app.innerHTML = pageAbout(); }
+  else if (a === "favorites"){ app.innerHTML = pageFavorites(); renderFavs(); }
   else app.innerHTML = notFound();
+  setMeta(a, b);
   window.scrollTo(0, 0);
+  track("page_view", { page_title: document.title, page_location: location.href });
 }
 
 $("#menuBtn").onclick = () => $("#links").classList.toggle("open");
